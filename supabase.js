@@ -7,6 +7,7 @@ export const configured =
   Boolean(supabaseUrl) &&
   Boolean(supabaseKey) &&
   !supabaseUrl.includes('your-project-id') &&
+  !supabaseKey.includes('your-key-here') &&
   !supabaseKey.includes('your-anon-key')
 
 export const sb = configured
