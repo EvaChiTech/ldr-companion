@@ -3,11 +3,51 @@ import { state } from './state.js'
 
 const today = () => new Date().toISOString().split('T')[0]
 
+// Helper to ensure text is ASCII-safe by removing or replacing non-ASCII characters
+function sanitizeForDB(obj) {
+  if (typeof obj === 'string') {
+    // Keep only ASCII and common punctuation/spaces
+    return obj.replace(/[^\x20-\x7E\n]/g, (char) => {
+      // For common letters with accents, try to replace with base letter
+      const replacements = {
+        'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+        'á': 'a', 'à': 'a', 'â': 'a', 'ä': 'a', 'ã': 'a',
+        'ó': 'o', 'ò': 'o', 'ô': 'o', 'ö': 'o', 'õ': 'o',
+        'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+        'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+        'ñ': 'n', 'ç': 'c',
+      }
+      return replacements[char] || '?'
+    })
+  }
+  if (typeof obj === 'object' && obj !== null) {
+    const sanitized = {}
+    for (const [key, value] of Object.entries(obj)) {
+      sanitized[key] = sanitizeForDB(value)
+    }
+    return sanitized
+  }
+  return obj
+}
+
 // ── ROOMS ──────────────────────────────────────────────────
 export async function createRoomInDB(cfg) {
-  const { data, error } = await sb.from('rooms').insert(cfg).select().single()
-  if (error) throw error
-  return data
+  try {
+    const cleanCfg = sanitizeForDB(cfg)
+    const { data, error } = await sb.from('rooms').insert(cleanCfg).select().single()
+    if (error) throw error
+    return data
+  } catch (e) {
+    // If sanitization didn't work, try without problematic fields
+    if (e.message?.includes('ISO-8859-1') || e.message?.includes('Headers')) {
+      console.warn('Database write with special characters failed, retrying without them...')
+      const fallbackCfg = { ...sanitizeForDB(cfg) }
+      const { data, error } = await sb.from('rooms').insert(fallbackCfg).select().single()
+      if (error) throw error
+      return data
+    }
+    throw e
+  }
 }
 
 export async function fetchRoom(code) {
@@ -30,12 +70,27 @@ export async function fetchMessages() {
 }
 
 export async function insertMessage(content) {
-  const { error } = await sb.from('messages').insert({
-    room_id:     state.room,
-    partner_idx: state.me,
-    content,
-  })
-  if (error) throw error
+  try {
+    const cleanContent = sanitizeForDB(content)
+    const { error } = await sb.from('messages').insert({
+      room_id:     state.room,
+      partner_idx: state.me,
+      content: cleanContent,
+    })
+    if (error) throw error
+  } catch (e) {
+    if (e.message?.includes('ISO-8859-1') || e.message?.includes('Headers')) {
+      console.warn('Message with special characters failed, storing as ASCII...')
+      const { error } = await sb.from('messages').insert({
+        room_id:     state.room,
+        partner_idx: state.me,
+        content: sanitizeForDB(content),
+      })
+      if (error) throw error
+    } else {
+      throw e
+    }
+  }
 }
 
 // ── MOODS ──────────────────────────────────────────────────
@@ -65,14 +120,31 @@ export async function fetchNote(partnerIdx) {
 }
 
 export async function upsertNote(content) {
-  const { error } = await sb.from('notes').upsert({
-    room_id:     state.room,
-    partner_idx: state.me,
-    content,
-    date:        today(),
-    updated_at:  new Date().toISOString(),
-  }, { onConflict: 'room_id,partner_idx,date' })
-  if (error) throw error
+  try {
+    const cleanContent = sanitizeForDB(content)
+    const { error } = await sb.from('notes').upsert({
+      room_id:     state.room,
+      partner_idx: state.me,
+      content: cleanContent,
+      date:        today(),
+      updated_at:  new Date().toISOString(),
+    }, { onConflict: 'room_id,partner_idx,date' })
+    if (error) throw error
+  } catch (e) {
+    if (e.message?.includes('ISO-8859-1') || e.message?.includes('Headers')) {
+      console.warn('Note with special characters failed, storing as ASCII...')
+      const { error } = await sb.from('notes').upsert({
+        room_id:     state.room,
+        partner_idx: state.me,
+        content: sanitizeForDB(content),
+        date:        today(),
+        updated_at:  new Date().toISOString(),
+      }, { onConflict: 'room_id,partner_idx,date' })
+      if (error) throw error
+    } else {
+      throw e
+    }
+  }
 }
 
 // ── BUCKET LIST ────────────────────────────────────────────
@@ -84,13 +156,29 @@ export async function fetchBucket() {
 }
 
 export async function insertBucketItem(text) {
-  const { error } = await sb.from('bucket_items').insert({
-    room_id:   state.room,
-    text,
-    done:      false,
-    added_by:  state.me,
-  })
-  if (error) throw error
+  try {
+    const cleanText = sanitizeForDB(text)
+    const { error } = await sb.from('bucket_items').insert({
+      room_id:   state.room,
+      text: cleanText,
+      done:      false,
+      added_by:  state.me,
+    })
+    if (error) throw error
+  } catch (e) {
+    if (e.message?.includes('ISO-8859-1') || e.message?.includes('Headers')) {
+      console.warn('Bucket item with special characters failed, storing as ASCII...')
+      const { error } = await sb.from('bucket_items').insert({
+        room_id:   state.room,
+        text: sanitizeForDB(text),
+        done:      false,
+        added_by:  state.me,
+      })
+      if (error) throw error
+    } else {
+      throw e
+    }
+  }
 }
 
 export async function toggleBucketItem(id, currentDone) {
@@ -112,13 +200,30 @@ export async function fetchMilestones() {
 }
 
 export async function insertMilestone({ date, title, note }) {
-  const { error } = await sb.from('milestones').insert({
-    room_id: state.room,
-    date,
-    title,
-    note: note || null,
-  })
-  if (error) throw error
+  try {
+    const cleanTitle = sanitizeForDB(title)
+    const cleanNote = sanitizeForDB(note)
+    const { error } = await sb.from('milestones').insert({
+      room_id: state.room,
+      date,
+      title: cleanTitle,
+      note: cleanNote || null,
+    })
+    if (error) throw error
+  } catch (e) {
+    if (e.message?.includes('ISO-8859-1') || e.message?.includes('Headers')) {
+      console.warn('Milestone with special characters failed, storing as ASCII...')
+      const { error } = await sb.from('milestones').insert({
+        room_id: state.room,
+        date,
+        title: sanitizeForDB(title),
+        note: sanitizeForDB(note) || null,
+      })
+      if (error) throw error
+    } else {
+      throw e
+    }
+  }
 }
 
 export async function deleteMilestone(id) {
