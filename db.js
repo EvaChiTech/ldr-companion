@@ -33,18 +33,42 @@ function sanitizeForDB(obj) {
 // ── ROOMS ──────────────────────────────────────────────────
 export async function createRoomInDB(cfg) {
   try {
+    console.log('[DB] createRoomInDB called with cfg:', cfg)
     const cleanCfg = sanitizeForDB(cfg)
+    console.log('[DB] Sanitized cfg:', cleanCfg)
+    
+    // Log each field to check for non-ASCII characters
+    Object.entries(cleanCfg).forEach(([key, val]) => {
+      if (typeof val === 'string') {
+        const hasNonASCII = /[^\x20-\x7E\n]/.test(val)
+        console.log(`[DB] Field "${key}": "${val}" (non-ASCII: ${hasNonASCII})`)
+      }
+    })
+    
+    console.log('[DB] Attempting to insert into Supabase...')
     const { data, error } = await sb.from('rooms').insert(cleanCfg).select().single()
-    if (error) throw error
+    
+    if (error) {
+      console.error('[DB] Supabase error:', error)
+      throw error
+    }
+    
+    console.log('[DB] Room created successfully:', data)
     return data
   } catch (e) {
+    console.error('[DB] Create room error:', e)
     // If sanitization didn't work, try without problematic fields
     if (e.message?.includes('ISO-8859-1') || e.message?.includes('Headers')) {
-      console.warn('Database write with special characters failed, retrying without them...')
+      console.warn('[DB] Headers error detected, retrying with fallback...')
       const fallbackCfg = { ...sanitizeForDB(cfg) }
-      const { data, error } = await sb.from('rooms').insert(fallbackCfg).select().single()
-      if (error) throw error
-      return data
+      try {
+        const { data, error } = await sb.from('rooms').insert(fallbackCfg).select().single()
+        if (error) throw error
+        return data
+      } catch (retryErr) {
+        console.error('[DB] Retry also failed:', retryErr)
+        throw retryErr
+      }
     }
     throw e
   }
