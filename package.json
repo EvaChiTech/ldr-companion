@@ -1,0 +1,19 @@
+{
+  "name": "ldr-companion",
+  "version": "1.0.0",
+  "description": "A real-time companion app for long-distance couples",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.105.3"
+  },
+  "devDependencies": {
+    "prisma": "^7.8.0",
+    "vite": "^5.2.0"
+  }
+}

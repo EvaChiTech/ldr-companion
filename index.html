@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LDR Companion</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♡</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/styles.css">
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="loading-title">LDR Companion</div>
+  <div class="loading-dots">
+    <span class="ldot"></span><span class="ldot"></span><span class="ldot"></span>
+  </div>
+</div>
+
+<!-- Onboarding -->
+<div id="onboarding" style="display:none;">
+  <div class="ob-wrap">
+
+    <div id="ob-land" style="display:none;">
+      <div class="hero">
+        <div class="hero-logo">LDR<br>Companion</div>
+        <p class="hero-sub">Real-time connected. AI-powered.<br>Your shared space across every mile.</p>
+      </div>
+      <div class="ob-cards">
+        <div class="ob-card" onclick="window.app.obShow('ob-create')">
+          <h3>Create</h3>
+          <p>Start a new shared room</p>
+        </div>
+        <div class="ob-card" onclick="window.app.obShow('ob-join')">
+          <h3>Join</h3>
+          <p>Have a room code?</p>
+        </div>
+      </div>
+      <div id="config-warn" class="notice warn" style="display:none;">
+        <strong>⚠ Setup needed:</strong> Copy <code>.env.example</code> → <code>.env</code> and fill in your Supabase and Anthropic keys. See <code>README.md</code>.
+      </div>
+    </div>
+
+    <div id="ob-create" style="display:none;">
+      <button class="btn-back" onclick="window.app.obShow('ob-land')">← Back</button>
+      <h2 class="ob-title">Create your room</h2>
+      <p class="ob-sub">You'll get a code to share with your partner</p>
+      <div class="form-card">
+        <div class="form-section-label">You</div>
+        <div class="grid-2">
+          <div class="field"><label>Your name</label><input id="c-n1" type="text" placeholder="Emeka"></div>
+          <div class="field"><label>Your timezone</label><select id="c-tz1"></select></div>
+        </div>
+      </div>
+      <div class="form-card">
+        <div class="form-section-label">Your partner</div>
+        <div class="grid-2">
+          <div class="field"><label>Their name</label><input id="c-n2" type="text" placeholder="Aino"></div>
+          <div class="field"><label>Their timezone</label><select id="c-tz2"></select></div>
+        </div>
+      </div>
+      <div class="form-card">
+        <div class="grid-2" style="margin-bottom:12px;">
+          <div class="field"><label>Together since</label><input id="c-since" type="date"></div>
+          <div class="field"><label>Next visit (optional)</label><input id="c-visit" type="date"></div>
+        </div>
+        <div class="field"><label>Shared interests — for AI date ideas</label>
+          <input id="c-interests" type="text" placeholder="e.g. cooking, hiking, anime, jazz, K-drama, travel"></div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="window.app.createRoom()">Create room →</button>
+      <div id="c-err" class="form-error" style="display:none;"></div>
+    </div>
+
+    <div id="ob-join" style="display:none;">
+      <button class="btn-back" onclick="window.app.obShow('ob-land')">← Back</button>
+      <h2 class="ob-title">Join a room</h2>
+      <p class="ob-sub">Enter the code your partner shared</p>
+      <div class="form-card">
+        <div class="field">
+          <label>Room code</label>
+          <input id="j-code" type="text" class="code-input" placeholder="AB3X7K2P" maxlength="8">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="window.app.joinRoom()">Find room →</button>
+      <div id="j-err" class="form-error" style="display:none;"></div>
+    </div>
+
+    <div id="ob-pick" style="display:none;">
+      <h2 class="ob-title">Which one are you?</h2>
+      <p class="ob-sub">Select your profile to continue</p>
+      <div class="ob-cards">
+        <div class="ob-card tall" onclick="window.app.pickPartner(1)">
+          <h3 id="pk-n1"></h3><p id="pk-tz1"></p>
+        </div>
+        <div class="ob-card tall" onclick="window.app.pickPartner(2)">
+          <h3 id="pk-n2"></h3><p id="pk-tz2"></p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="main-app" style="display:none;">
+
+  <header id="app-header">
+    <div class="header-inner">
+      <div>
+        <div class="header-names" id="hdr-names"></div>
+        <div class="header-meta">
+          <span class="header-days" id="hdr-days"></span>
+          <span class="sep">·</span>
+          <span class="room-badge" onclick="window.app.copyCode()" id="room-badge">
+            <span class="live-dot"></span>
+            <span id="room-badge-text"></span>
+          </span>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="window.app.leaveRoom()">Leave</button>
+    </div>
+  </header>
+
+  <main class="main-content">
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="home" onclick="window.app.switchTab('home',this)">Home</button>
+      <button class="tab" data-tab="chat" onclick="window.app.switchTab('chat',this)">
+        Chat<span id="chat-badge" class="tab-badge" style="display:none;"></span>
+      </button>
+      <button class="tab" data-tab="plans" onclick="window.app.switchTab('plans',this)">Plans</button>
+      <button class="tab" data-tab="story" onclick="window.app.switchTab('story',this)">Story</button>
+    </nav>
+
+    <!-- HOME -->
+    <div id="tab-home" class="tab-panel">
+      <div class="card clock-card">
+        <div class="clock-grid">
+          <div class="clock-pane">
+            <div class="clock-name" id="h-cname1"></div>
+            <div class="clock-time" id="h-clock1"></div>
+            <div class="clock-date" id="h-date1"></div>
+            <div class="clock-city" id="h-city1"></div>
+          </div>
+          <div class="clock-sep">
+            <span class="clock-heart">♡</span>
+            <span class="clock-diff" id="h-tdiff"></span>
+          </div>
+          <div class="clock-pane">
+            <div class="clock-name" id="h-cname2"></div>
+            <div class="clock-time" id="h-clock2"></div>
+            <div class="clock-date" id="h-date2"></div>
+            <div class="clock-city" id="h-city2"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card cd-card">
+        <div class="cd-top">
+          <div class="slabel">Next visit</div>
+          <div class="cd-update">
+            <input id="h-vi" type="date">
+            <button class="btn btn-secondary btn-sm" onclick="window.app.updateVisit()">Update</button>
+          </div>
+        </div>
+        <div class="cd-big" id="h-cdnum"></div>
+        <div class="cd-sub" id="h-cdsub"></div>
+        <div class="progress"><div class="progress-fill" id="h-cdbar"></div></div>
+        <div class="cd-labels">
+          <span id="h-cdsl"></span><span id="h-cdvl"></span>
+        </div>
+      </div>
+
+      <div class="card mood-card">
+        <div class="slabel">Today's mood</div>
+        <div class="grid-2">
+          <div>
+            <div class="field-label" id="mood-my-lbl"></div>
+            <div id="mood-my-opts" class="mood-pills"></div>
+          </div>
+          <div>
+            <div class="field-label" id="mood-their-lbl"></div>
+            <div id="mood-their-val" class="mood-their"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card note-card">
+          <div class="slabel" id="note-my-lbl"></div>
+          <textarea id="h-mynote" placeholder="Write something to remember today by..."></textarea>
+          <div class="note-footer">
+            <span id="note-ok" class="save-ok" style="display:none;">Saved ✓</span>
+            <button class="btn btn-secondary btn-sm" onclick="window.app.saveNote()">Save</button>
+          </div>
+        </div>
+        <div class="card note-card">
+          <div class="slabel" id="note-their-lbl"></div>
+          <div id="h-theirnote" class="note-display"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAT -->
+    <div id="tab-chat" class="tab-panel" style="display:none;">
+      <div class="chat-info">
+        <span class="live-dot" style="background:var(--secondary);"></span>
+        Real-time via Supabase Realtime WebSockets — instant on both devices.
+      </div>
+      <div class="card chat-card">
+        <div id="chat-messages"></div>
+        <div class="chat-input-row">
+          <input id="chat-inp" type="text" placeholder="Type a message...">
+          <button class="btn btn-primary" onclick="window.app.sendMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLANS -->
+    <div id="tab-plans" class="tab-panel" style="display:none;">
+      <div class="card">
+        <div class="slabel">AI date ideas</div>
+        <div class="input-row mb-14">
+          <input id="ai-inp" type="text" placeholder="Your interests: cooking, anime, jazz, stargazing...">
+          <button class="btn btn-primary btn-sm" onclick="window.app.genIdeas()">Generate →</button>
+        </div>
+        <div id="ai-loading" class="loading-text" style="display:none;">
+          <span class="ldot"></span><span class="ldot"></span><span class="ldot"></span>
+          Crafting ideas just for you two...
+        </div>
+        <div id="ai-results"></div>
+        <div id="ai-empty" class="empty-state">Enter your shared interests and let Claude craft personalized date ideas.</div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <div class="slabel">Shared bucket list</div>
+        <div class="input-row mb-14">
+          <input id="bk-inp" type="text" placeholder="A dream to do together...">
+          <button class="btn btn-secondary btn-sm" onclick="window.app.addBucket()">Add →</button>
+        </div>
+        <div id="bk-list"></div>
+        <div id="bk-empty" class="empty-state center" style="display:none;">No items yet — start dreaming together</div>
+      </div>
+    </div>
+
+    <!-- STORY -->
+    <div id="tab-story" class="tab-panel" style="display:none;">
+      <div class="card mb-20">
+        <div class="slabel">Add a milestone</div>
+        <div class="grid-2 mb-12">
+          <div class="field"><label>Date</label><input id="ms-date" type="date"></div>
+          <div class="field"><label>Title</label><input id="ms-title" type="text" placeholder="Our first video call"></div>
+        </div>
+        <div class="field mb-14"><label>Memory (optional)</label>
+          <input id="ms-note" type="text" placeholder="A detail to hold onto..."></div>
+        <button class="btn btn-primary btn-full" onclick="window.app.addMilestone()">Add to our story →</button>
+      </div>
+      <div id="ms-timeline"></div>
+      <div id="ms-empty" class="empty-state center" style="display:none;">Your story is just beginning</div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<link rel="stylesheet" href="/styles.css">
+<script type="module" src="/main.js"></script>
+</body>
+</html>
