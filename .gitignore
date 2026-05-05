@@ -6,3 +6,5 @@ dist/
 *.log
 
 /generated/prisma
+skills/
+skills-lock.json
