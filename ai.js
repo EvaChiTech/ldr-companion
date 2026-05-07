@@ -1,7 +1,7 @@
-const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
+import { sb } from './supabase.js'
 
 /**
- * Generate personalized virtual date ideas using Claude.
+ * Generate personalized virtual date ideas using Claude via Supabase Edge Function.
  * @param {Object} opts
  * @param {string} opts.n1        - Partner 1 name
  * @param {string} opts.n2        - Partner 2 name
@@ -12,49 +12,21 @@ const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
  * @returns {Promise<Array<{title: string, description: string}>>}
  */
 export async function generateDateIdeas({ n1, n2, tz1, tz2, since, interests }) {
-  if (!ANTHROPIC_KEY || ANTHROPIC_KEY.includes('your-key')) {
-    throw new Error('Anthropic API key not configured in .env')
+  if (!sb) {
+    throw new Error('Supabase not configured. Add keys to .env first.')
   }
 
-  const city1 = tz1.split('/').pop().replace(/_/g, ' ')
-  const city2 = tz2.split('/').pop().replace(/_/g, ' ')
-  const days   = Math.floor((Date.now() - new Date(since + 'T00:00:00')) / 86400000)
+  try {
+    const { data, error } = await sb.functions.invoke('generate-date-ideas', {
+      body: { n1, n2, tz1, tz2, since, interests },
+    })
 
-  const prompt = `Generate 4 creative, heartfelt virtual date ideas for a long-distance couple.
+    if (error) {
+      throw error
+    }
 
-Couple: ${n1} (in ${city1}) and ${n2} (in ${city2})
-Together for: ${days} days
-Shared interests: ${interests || 'not specified — use universally appealing ideas'}
-
-Requirements:
-- Each idea must be doable over a video call
-- Be specific to their locations/cultures when possible
-- Warm, personal, not generic
-- Mix different vibes: cozy, playful, romantic, adventurous
-
-Return ONLY a JSON array. No markdown, no explanation. Format:
-[{"title":"short evocative title","description":"2 warm, specific, actionable sentences"}]`
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type':      'application/json',
-      'x-api-key':         ANTHROPIC_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model:      'claude-sonnet-4-20250514',
-      max_tokens: 1200,
-      messages:   [{ role: 'user', content: prompt }],
-    }),
-  })
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err?.error?.message || `API error ${res.status}`)
+    return data.ideas
+  } catch (err) {
+    throw new Error(`Could not generate ideas: ${err.message}`)
   }
-
-  const data = await res.json()
-  const raw  = data.content.filter(b => b.type === 'text').map(b => b.text).join('')
-  return JSON.parse(raw.replace(/```json|```/g, '').trim())
 }
