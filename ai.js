@@ -1,19 +1,6 @@
 const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
 
 /**
- * Validate that API key only contains ASCII characters
- * @param {string} key
- * @throws {Error} if key contains non-ASCII characters
- */
-function validateAPIKey(key) {
-  if (!key) return
-  // Check if key contains non-ASCII characters
-  if (!/^[\x20-\x7E]+$/.test(key)) {
-    throw new Error('Anthropic API key contains invalid characters. Ensure .env file is UTF-8 encoded and key contains only ASCII characters.')
-  }
-}
-
-/**
  * Generate personalized virtual date ideas using Claude.
  * @param {Object} opts
  * @param {string} opts.n1        - Partner 1 name
@@ -25,8 +12,6 @@ function validateAPIKey(key) {
  * @returns {Promise<Array<{title: string, description: string}>>}
  */
 export async function generateDateIdeas({ n1, n2, tz1, tz2, since, interests }) {
-  validateAPIKey(ANTHROPIC_KEY)
-  
   if (!ANTHROPIC_KEY || ANTHROPIC_KEY.includes('your-key')) {
     throw new Error('Anthropic API key not configured in .env')
   }
