@@ -1,9 +1,9 @@
 # LDR Companion — VS Code Setup Guide
 
-[![Build Status](https://github.com/EvaChiTech/ldr-companion/actions/workflows/build.yml/badge.svg)](https://github.com/EvaChiTech/ldr-companion/actions)
+[![Build Status](https://github.com/EvaChiTech/ldr-companion/actions/workflows/webpack.yml/badge.svg)](https://github.com/EvaChiTech/ldr-companion/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES2022-yellow.svg)](package.json)
-[![Vite](https://img.shields.io/badge/Vite-5.2-646CFF.svg)](https://vitejs.dev)
+[![Vite](https://img.shields.io/badge/Vite-8.0-646CFF.svg)](https://vitejs.dev)
 
 A real-time long-distance relationship web app.
 Built for people far away from each other to keep each other connected in real time.
