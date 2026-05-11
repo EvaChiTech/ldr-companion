@@ -1,0 +1,16 @@
+{
+  "name": "LDR Companion",
+  "short_name": "LDR",
+  "description": "Real-time companion for couples, families, and friends across distance.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAF6EE",
+  "theme_color": "#C4594A",
+  "icons": [
+    { "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='42' fill='%23C4594A'/><text y='150' x='96' text-anchor='middle' font-size='140' fill='white'>%E2%99%A1</text></svg>", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='112' fill='%23C4594A'/><text y='400' x='256' text-anchor='middle' font-size='370' fill='white'>%E2%99%A1</text></svg>", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "categories": ["lifestyle", "social"]
+}

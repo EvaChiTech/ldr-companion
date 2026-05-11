@@ -1,9 +1,29 @@
+// Some city names look like IANA tz IDs but aren't (Busan shares Seoul's tz).
+// Normalize known bad-but-recoverable IDs to their canonical equivalent.
+const TZ_FIXES = {
+  'Asia/Busan': 'Asia/Seoul',
+}
+
+/** Translate known invalid TZ IDs to their canonical form, then validate. */
+export function normalizeTz(tz) {
+  if (!tz) return 'UTC'
+  const fixed = TZ_FIXES[tz] || tz
+  try {
+    // Throws if invalid
+    new Intl.DateTimeFormat('en-US', { timeZone: fixed }).format(new Date())
+    return fixed
+  } catch {
+    console.warn('[clocks] invalid timezone, falling back to UTC:', tz)
+    return 'UTC'
+  }
+}
+
 /**
  * Format a Date to HH:MM:SS in a given timezone
  */
 export function tzTime(tz) {
   return new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
+    timeZone: normalizeTz(tz),
     hour:     '2-digit',
     minute:   '2-digit',
     second:   '2-digit',
@@ -16,7 +36,7 @@ export function tzTime(tz) {
  */
 export function tzDate(tz) {
   return new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
+    timeZone: normalizeTz(tz),
     weekday:  'long',
     month:    'long',
     day:      'numeric',
@@ -28,7 +48,7 @@ export function tzDate(tz) {
  */
 export function tzOffsetMinutes(tz) {
   const s = new Intl.DateTimeFormat('en-US', {
-    timeZone:     tz,
+    timeZone:     normalizeTz(tz),
     timeZoneName: 'shortOffset',
   }).format(new Date())
   const m = s.match(/GMT([+-]\d+(?::\d+)?)?/)

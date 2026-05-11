@@ -44,14 +44,23 @@ Shared interests: ${interests || 'not specified — use universally appealing id
 
 Requirements:
 - Each idea must be doable over a video call
-- Be specific to their locations/cultures when possible
 - Warm, personal, not generic
 - Mix different vibes: cozy, playful, romantic, adventurous
 
-Return ONLY a JSON array. No markdown, no explanation. Format:
-[{"title":"short evocative title","description":"2 warm, specific, actionable sentences"}]`
+Format as plain prose (no markdown):
+Idea 1: <title>
+<2 warm specific sentences>
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+Idea 2: <title>
+<2 warm specific sentences>
+
+Idea 3: <title>
+<2 warm specific sentences>
+
+Idea 4: <title>
+<2 warm specific sentences>`
+
+    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -61,13 +70,14 @@ Return ONLY a JSON array. No markdown, no explanation. Format:
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 1200,
+        stream: true,
         messages: [{ role: 'user', content: prompt }],
       }),
     })
 
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '')
-      let msg = `Anthropic API error ${res.status}`
+    if (!upstream.ok || !upstream.body) {
+      const errText = await upstream.text().catch(() => '')
+      let msg = `Anthropic API error ${upstream.status}`
       try { msg = JSON.parse(errText)?.error?.message || msg } catch {}
       return new Response(
         JSON.stringify({ error: msg }),
@@ -75,20 +85,56 @@ Return ONLY a JSON array. No markdown, no explanation. Format:
       )
     }
 
-    const data = await res.json()
-    const raw = (data.content || [])
-      .filter((b: any) => b.type === 'text')
-      .map((b: any) => b.text)
-      .join('')
-    const ideas = JSON.parse(raw.replace(/```json|```/g, '').trim())
+    const encoder = new TextEncoder()
+    const decoder = new TextDecoder()
 
-    return new Response(JSON.stringify({ ideas }), {
-      headers: { ...CORS, 'Content-Type': 'application/json' },
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = upstream.body!.getReader()
+        let buffer = ''
+        try {
+          while (true) {
+            const { value, done } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || ''
+            for (const line of lines) {
+              const t = line.trim()
+              if (!t.startsWith('data:')) continue
+              const payload = t.slice('data:'.length).trim()
+              if (!payload || payload === '[DONE]') continue
+              try {
+                const evt = JSON.parse(payload)
+                if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
+                  const text = evt.delta.text || ''
+                  if (text) controller.enqueue(encoder.encode(`data: ${JSON.stringify(text)}\n\n`))
+                }
+              } catch { /* skip non-JSON */ }
+            }
+          }
+        } catch (e) {
+          const msg = (e as any)?.message || String(e)
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`))
+        } finally {
+          controller.enqueue(encoder.encode(`data: [DONE]\n\n`))
+          controller.close()
+        }
+      },
+    })
+
+    return new Response(stream, {
+      headers: {
+        ...CORS,
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+      },
     })
   } catch (error) {
     console.error('Error:', error)
     return new Response(
-      JSON.stringify({ error: (error as any)?.message || 'Failed to generate ideas' }),
+      JSON.stringify({ error: (error as any)?.message || 'Failed to generate streamed ideas' }),
       { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
     )
   }

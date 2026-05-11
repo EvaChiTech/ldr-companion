@@ -1,15 +1,46 @@
-import { sb, configured } from './supabase.js'
-import { state, persistSession, clearSession, loadSession } from './state.js'
+import { state, persistSession, clearSession, loadSession, loadRoomsList, upsertRoomMembership, setActiveRoomCode, getActiveRoomCode, sortedRooms } from './state.js'
+import { initRoomsList, showRoomsList, hideRoomsList, refreshRoomsList } from './rooms-list.js'
 import { subscribeRoom, unsubscribeRoom } from './realtime.js'
-import { generateDateIdeas } from './ai.js'
+import { generateDateIdeas, streamDateIdeas } from './ai.js'
+import { configured } from './supabase.js'
 import { tzTime, tzDate, tzDiff, daysBetween, cityLabel } from './clocks.js'
 import * as db from './db.js'
+import { initWatchTab, onRemoteWatchChange, teardownWatch, onChatMessage as watchOnChat } from './watch.js'
+import { initTogetherTab, teardownTogether } from './together.js'
+import { initRitualsTab, teardownRituals, onRemoteRitualEvent } from './rituals.js'
+import { initMemoryBook, teardownMemory } from './memory.js'
+import { playOnlineChime, playOfflineChime, initSoundToggle } from './sound.js'
+import { initHeartbeat, teardownHeartbeat } from './heartbeat.js'
+import { initSoundCapsules, teardownSoundCapsules, onRemoteCapsule } from './sounds.js'
+import { initHarmony, teardownHarmony } from './harmony.js'
+import { initReunion, teardownReunion, onRemoteReunionEvent } from './reunion.js'
+import { initLetters, teardownLetters, onRemoteLetter } from './letters.js'
+import { initDreams, teardownDreams, onRemoteDream } from './dreams.js'
+import { initLife, teardownLife, onRemoteLifeEvent } from './life.js'
+import { initAnniversary, teardownAnniversary } from './anniversary.js'
+import { initCoach, teardownCoach } from './coach.js'
+import { initTone, teardownTone } from './tone.js'
+import { initMiniGame, teardownMiniGame } from './minigame.js'
+import { initHistory, teardownHistory } from './history.js'
+import { initWrapped, teardownWrapped } from './wrapped.js'
+import { initMoodViz, teardownMoodViz } from './mood-viz.js'
+import { initLocalCare, teardownLocalCare, setPartnerMood } from './localcare.js'
+import { initAuth, initAccountButton, pushRoomLink, deleteRoomLink, isSignedIn, onAuthChange } from './auth.js'
+import { initNotifications, notify, enableNotifications, disableNotifications, notifPref, pushToPartner } from './notify.js'
+import { initPolish } from './polish.js'
+import { initAnalytics, track } from './analytics.js'
+import { initI18n, t } from './i18n.js'
+import { maybeShowWelcome, showWelcomeForce } from './welcome.js'
+import { initErrorMonitor } from './errors.js'
+import { initAlbum, teardownAlbum, onRemoteAlbumUpdate } from './album.js'
+import { initDarkToggle, exportThisRoom, shareRoom } from './preferences.js'
 
 // ============================================================
 // TIMEZONE DATA — defaults to Seoul + Helsinki (Emeka & Aino)
 // ============================================================
 const TZ = [
   ["Seoul, South Korea",   "Asia/Seoul"],
+  ["Busan, South Korea",   "Asia/Seoul"],
   ["Helsinki, Finland",    "Europe/Helsinki"],
   ["Lagos, Nigeria",       "Africa/Lagos"],
   ["Tokyo, Japan",         "Asia/Tokyo"],
@@ -91,7 +122,21 @@ async function createRoom() {
   if (!since)     { err.textContent = 'Please enter your start date.'; err.style.display = 'block'; return }
   err.style.display = 'none'
 
-  const code = genCode()
+  const customRaw = ($('c-code')?.value || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '')
+  let code = customRaw || genCode()
+  if (customRaw && customRaw.length < 4) {
+    err.textContent = 'Custom code must be at least 4 characters (A–Z, 0–9, _ or -).'
+    err.style.display = 'block'; return
+  }
+  if (configured && customRaw) {
+    try {
+      if (await db.roomCodeExists(customRaw)) {
+        err.textContent = 'That code is taken — try another, or leave it blank for an auto-generated one.'
+        err.style.display = 'block'; return
+      }
+    } catch {}
+  }
+
   const cfg = {
     id:        code,
     room_code: code,
@@ -101,6 +146,9 @@ async function createRoom() {
     since,
     visit:     $('c-visit').value || null,
     interests: $('c-interests').value.trim(),
+    kind:      $('c-kind')?.value  || 'couple',
+    theme:     $('c-theme')?.value || 'warm',
+    alias:     ($('c-alias')?.value || '').trim() || null,
   }
 
   if (configured) {
@@ -109,16 +157,20 @@ async function createRoom() {
   }
 
   state.room = code; state.cfg = cfg; state.me = 1
-  persistSession()
+  upsertRoomMembership({ code, me: 1, alias: cfg.alias, kind: cfg.kind, theme: cfg.theme })
+  setActiveRoomCode(code)
+  if (isSignedIn()) pushRoomLink({ code, me: 1, alias: cfg.alias, kind: cfg.kind, theme: cfg.theme }).catch(console.error)
+  track('room_created', { kind: cfg.kind, theme: cfg.theme, custom_code: !!customRaw })
   startApp()
-  toast('Room created! Code: ' + code + ' — share it with your partner')
+  toast('Room created! Code: ' + code + ' — share it with the other person')
+  setTimeout(() => maybeShowWelcome(), 600)
 }
 
 async function joinRoom() {
   const code = $('j-code').value.trim().toUpperCase()
   const err = $('j-err')
   if (code.length < 6) { err.textContent = 'Please enter a valid room code.'; err.style.display = 'block'; return }
-  if (!configured)     { err.textContent = 'Supabase not configured — add keys to .env first.'; err.style.display = 'block'; return }
+  if (!configured)     { err.textContent = 'Connection not configured — add your project keys to .env first.'; err.style.display = 'block'; return }
 
   try {
     const data = await db.fetchRoom(code)
@@ -134,8 +186,18 @@ async function joinRoom() {
 
 function pickPartner(p) {
   state.me = p
-  persistSession()
+  upsertRoomMembership({
+    code: state.room, me: p,
+    alias: state.cfg?.alias, kind: state.cfg?.kind, theme: state.cfg?.theme,
+  })
+  setActiveRoomCode(state.room)
+  if (isSignedIn()) pushRoomLink({
+    code: state.room, me: p,
+    alias: state.cfg?.alias, kind: state.cfg?.kind, theme: state.cfg?.theme,
+  }).catch(console.error)
+  track('room_joined', { partner_idx: p, kind: state.cfg?.kind })
   startApp()
+  setTimeout(() => maybeShowWelcome(), 600)
 }
 
 // ============================================================
@@ -144,9 +206,15 @@ function pickPartner(p) {
 function startApp() {
   const { cfg } = state
   $('onboarding').style.display = 'none'
+  hideRoomsList()
   $('main-app').style.display   = 'block'
 
-  $('hdr-names').textContent      = cfg.n1 + ' & ' + cfg.n2
+  // Apply per-room theme
+  document.body.dataset.theme = cfg?.theme || 'warm'
+
+  $('hdr-names').textContent      = (cfg.alias && cfg.alias.trim()) || (cfg.n1 + ' & ' + cfg.n2)
+  if ($('vi-for-1')) $('vi-for-1').textContent = cfg.n1
+  if ($('vi-for-2')) $('vi-for-2').textContent = cfg.n2
   $('room-badge-text').textContent = state.room
   $('h-cname1').textContent        = cfg.n1.toUpperCase()
   $('h-cname2').textContent        = cfg.n2.toUpperCase()
@@ -163,21 +231,47 @@ function startApp() {
   buildMoodPills()
   updateClocks()
   updateCountdown()
+  initSoundToggle()
+  initNotifToggle()
+  initDarkToggle()
+  document.getElementById('tour-toggle')?.addEventListener('click', () => showWelcomeForce())
   setInterval(updateClocks, 1000)
   setInterval(updateCountdown, 60000)
 
   if (configured) {
     subscribeRoom({
-      onMessage:   handleIncomingMessage,
-      onMood:      () => loadMood(),
-      onNote:      () => loadTheirNote(),
-      onBucket:    () => loadBucket(),
-      onMilestone: () => loadMilestones(),
+      onMessage:        handleIncomingMessage,
+      onMood:           () => loadMood(),
+      onNote:           () => loadTheirNote(),
+      onBucket:         () => loadBucket(),
+      onMilestone:      () => loadMilestones(),
+      onWatch:          onRemoteWatchChange,
+      onDailyAnswer:    () => onRemoteRitualEvent('daily_answer'),
+      onSleepEvent:     () => onRemoteRitualEvent('sleep_event'),
+      onDailyQuestion:  () => onRemoteRitualEvent('daily_question'),
+      onPresenceChange: handlePresenceChange,
+      onSoundCapsule:   onRemoteCapsule,
+      onReunion:        onRemoteReunionEvent,
+      onLetter:         onRemoteLetter,
+      onDream:          onRemoteDream,
+      onCalendar:       () => onRemoteLifeEvent('calendar'),
+      onExpense:        () => onRemoteLifeEvent('expense'),
+      onVisa:           () => onRemoteLifeEvent('visa'),
+      onCare:           () => onRemoteLifeEvent('care'),
     })
+    initReunion()
+    initHarmony()
+    initAnniversary()
+    initCoach()
+    initTone()
+    initHistory()
+    initMoodViz()
+    initWrapped()
+    initLocalCare()
     loadAll()
   } else {
-    $('mood-their-val').textContent = 'Add Supabase keys to .env to sync'
-    $('h-theirnote').textContent    = 'Add Supabase keys to .env to see their note'
+    $('mood-their-val').textContent = 'Connect to sync'
+    $('h-theirnote').textContent    = 'Connect to see their note'
     renderMessages()
   }
 }
@@ -249,6 +343,7 @@ function buildMoodPills() {
       document.querySelectorAll('.mood-btn').forEach(x => x.classList.remove('active'))
       b.classList.add('active')
       if (configured) db.upsertMood(m).catch(console.error)
+      track('mood_set', { mood: m })
     }
     c.appendChild(b)
   })
@@ -261,6 +356,10 @@ async function loadMood() {
   const their = data.find(d => d.partner_idx === state.theirIdx())
   if (my) document.querySelectorAll('.mood-btn').forEach(b => { if (b.textContent === my.mood) b.classList.add('active') })
   $('mood-their-val').textContent = their ? their.mood : 'Not set yet'
+  setPartnerMood(their?.mood || null)
+  // Always show "Send something" — partner's mood (if set) just refines suggestions
+  const btn = $('mood-send-btn')
+  if (btn) btn.style.display = ''
 }
 
 // ============================================================
@@ -278,7 +377,7 @@ async function saveNote() {
 
 async function loadTheirNote() {
   const el = $('h-theirnote')
-  if (!configured) { el.textContent = 'Add Supabase keys to .env to see their note'; return }
+  if (!configured) { el.textContent = 'Connect to see their note'; return }
   const content = await db.fetchNote(state.theirIdx())
   el.textContent = content || 'No note yet today...'
 }
@@ -307,41 +406,207 @@ function renderMessages() {
     c.innerHTML = `<div class="chat-empty">No messages yet.<br>Say something to ${state.theirName()}...</div>`
     return
   }
+  const theirIdxStr = String(state.theirIdx())
   state.messages.forEach(msg => {
     const mine = msg.partner_idx === state.me
     const wrap = Object.assign(document.createElement('div'), { className: 'msg-wrap ' + (mine ? 'mine' : 'theirs') })
-    const meta = Object.assign(document.createElement('div'), { className: 'msg-meta', textContent: (mine ? 'You' : state.theirName()) + ' · ' + fmtTs(msg.created_at) })
-    const bub  = Object.assign(document.createElement('div'), { className: 'msg-bubble', textContent: msg.content })
+    const readByThem = mine && msg.read_by?.[theirIdxStr]
+    const metaText = (mine ? 'You' : state.theirName()) + ' · ' + fmtTs(msg.created_at) + (readByThem ? ' · ✓✓ read' : (mine ? ' · ✓ sent' : ''))
+    const meta = Object.assign(document.createElement('div'), { className: 'msg-meta' + (readByThem ? ' read' : ''), textContent: metaText })
+    const bub  = document.createElement('div'); bub.className = 'msg-bubble'
+    if (msg.image_url) {
+      const img = document.createElement('img')
+      img.className = 'msg-image'
+      img.src = msg.image_url
+      img.loading = 'lazy'
+      img.alt = 'shared photo'
+      img.onclick = () => openLightbox(msg.image_url)
+      bub.appendChild(img)
+      if (msg.content) {
+        const cap = document.createElement('div')
+        cap.className = 'msg-caption'
+        cap.textContent = msg.content
+        bub.appendChild(cap)
+      }
+    } else {
+      bub.textContent = msg.content
+    }
     wrap.append(meta, bub); c.appendChild(wrap)
   })
   c.scrollTop = c.scrollHeight
+}
+
+function openLightbox(url) {
+  let lb = document.getElementById('lightbox')
+  if (!lb) {
+    lb = document.createElement('div')
+    lb.id = 'lightbox'
+    lb.className = 'lightbox'
+    document.body.appendChild(lb)
+    lb.addEventListener('click', () => lb.classList.add('hidden'))
+  }
+  lb.innerHTML = `<img src="${url}" alt="photo">`
+  lb.classList.remove('hidden')
+}
+
+// Wire the header bell-toggle for browser notifications
+function initNotifToggle() {
+  const btn = $('notif-toggle')
+  if (!btn || btn.dataset.bound) return
+  btn.dataset.bound = '1'
+  const refresh = () => {
+    const on = notifPref() === 'on' && (typeof Notification !== 'undefined' && Notification.permission === 'granted')
+    btn.textContent = on ? '🔔' : '📵'
+    btn.title = on ? 'Notifications on (click to mute)' : 'Click to enable browser notifications'
+    btn.classList.toggle('signed-in', on)
+  }
+  refresh()
+  btn.addEventListener('click', async () => {
+    if (notifPref() === 'on') { disableNotifications(); refresh(); toast('Notifications muted') }
+    else {
+      const ok = await enableNotifications()
+      refresh()
+      if (!ok) toast('Browser blocked notifications — check site permissions')
+    }
+  })
+}
+
+// Track partner online/offline transitions for chime + UI dot
+let lastPartnerOnline = null
+function handlePresenceChange(online) {
+  const dot = $('partner-status')
+  if (dot) {
+    dot.classList.toggle('online',  online)
+    dot.classList.toggle('offline', !online)
+    dot.title = online ? `${state.theirName?.() || 'Partner'} is online` : `${state.theirName?.() || 'Partner'} is away`
+  }
+  // Only chime on transitions, not on the initial sync
+  if (lastPartnerOnline !== null && online !== lastPartnerOnline) {
+    if (online)  {
+      playOnlineChime()
+      toast(`${state.theirName?.() || 'Partner'} is online ✨`)
+      notify(`${state.theirName?.() || 'Partner'} is online ✨`, 'They just opened the app.', { tag: 'presence' })
+    } else {
+      playOfflineChime()
+    }
+  }
+  lastPartnerOnline = online
 }
 
 function handleIncomingMessage(msg) {
   if (state.messages.find(m => m.id === msg.id)) return
   state.messages.push(msg)
   renderMessages()
+  watchOnChat(msg)
+  if (msg.image_url) onRemoteAlbumUpdate()
   if ($('tab-chat').style.display === 'none') {
     state.unread++
     const b = $('chat-badge'); b.textContent = state.unread; b.style.display = 'inline-flex'
   }
+  // Push notification when partner sends a message and tab isn't focused
+  if (msg.partner_idx !== state.me) {
+    const preview = msg.image_url ? '📷 sent a photo' : (msg.content || '').slice(0, 80)
+    notify(`${state.theirName?.() || 'Partner'} · ${state.cfg?.alias || ''}`.trim(), preview, { tag: 'msg' })
+  }
+}
+
+let pendingImage = null  // { blob, kind, previewUrl }
+
+async function compressImage(file, maxDim = 1600, quality = 0.85) {
+  if (!file.type.startsWith('image/')) return file
+  // GIFs: don't re-encode
+  if (file.type === 'image/gif') return file
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      let { width, height } = img
+      if (width > maxDim || height > maxDim) {
+        const ratio = Math.min(maxDim / width, maxDim / height)
+        width = Math.round(width * ratio)
+        height = Math.round(height * ratio)
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width; canvas.height = height
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+      canvas.toBlob(b => resolve(b || file), 'image/jpeg', quality)
+    }
+    img.onerror = () => resolve(file)
+    img.src = URL.createObjectURL(file)
+  })
+}
+
+function setPendingImage(file) {
+  if (!file) return
+  if (file.size > 10 * 1024 * 1024) { toast('Image too large (max 10 MB)'); return }
+  if (pendingImage?.previewUrl) URL.revokeObjectURL(pendingImage.previewUrl)
+  pendingImage = { blob: file, kind: 'image', previewUrl: URL.createObjectURL(file) }
+  renderPendingImage()
+}
+
+function clearPendingImage() {
+  if (pendingImage?.previewUrl) URL.revokeObjectURL(pendingImage.previewUrl)
+  pendingImage = null
+  renderPendingImage()
+}
+
+function renderPendingImage() {
+  const wrap = $('chat-pending')
+  if (!wrap) return
+  if (!pendingImage) { wrap.innerHTML = ''; wrap.style.display = 'none'; return }
+  wrap.style.display = ''
+  wrap.innerHTML = `
+    <img src="${pendingImage.previewUrl}" alt="preview">
+    <button type="button" class="chat-pending-x" title="Remove">×</button>`
+  wrap.querySelector('.chat-pending-x').onclick = clearPendingImage
 }
 
 async function sendMessage() {
-  const inp = $('chat-inp'), text = inp.value.trim(); if (!text) return
+  const inp = $('chat-inp')
+  const text = inp.value.trim()
+  if (!text && !pendingImage) return
   inp.value = ''
+
   if (!configured) {
-    state.messages.push({ id: Date.now(), partner_idx: state.me, content: text, created_at: new Date().toISOString() })
+    state.messages.push({
+      id: Date.now(), partner_idx: state.me,
+      content: text, image_url: pendingImage?.previewUrl || null,
+      created_at: new Date().toISOString(),
+    })
+    pendingImage = null  // keep blob URL alive for offline preview
+    renderPendingImage()
     renderMessages(); return
   }
-  try { await db.insertMessage(text) }
-  catch (e) { toast('Could not send: ' + e.message) }
+
+  // Capture and clear local pending state immediately so the UI feels snappy
+  const imgToSend = pendingImage
+  pendingImage = null
+  renderPendingImage()
+  try {
+    let attachment = null
+    if (imgToSend) {
+      const compressed = await compressImage(imgToSend.blob)
+      attachment = await db.uploadChatImage(compressed, imgToSend.kind)
+    }
+    await db.insertMessage(text, attachment)
+    track('message_sent', { has_image: !!attachment, has_text: !!text })
+    pushToPartner({
+      title: `${state.cfg?.alias || (state.cfg.n1 + ' & ' + state.cfg.n2)}`,
+      body: attachment ? '📷 sent a photo' : (text || '').slice(0, 80),
+      tag: 'msg',
+    })
+  } catch (e) {
+    toast('Could not send: ' + e.message)
+    // Restore pending so user can retry
+    if (imgToSend) { pendingImage = imgToSend; renderPendingImage() }
+    if (text) inp.value = text
+  }
 }
 
 // ============================================================
 // AI IDEAS
 // ============================================================
 async function genIdeas() {
+
   const el  = $('ai-results')
   const emp = $('ai-empty')
   $('ai-loading').style.display = 'flex'; el.innerHTML = ''; emp.style.display = 'none'
@@ -369,6 +634,41 @@ async function genIdeas() {
   } catch (e) {
     $('ai-loading').style.display = 'none'
     emp.textContent = 'Could not generate ideas: ' + e.message; emp.style.display = 'block'
+  }
+}
+
+async function streamIdeas() {
+  const el  = $('ai-results')
+  const emp = $('ai-empty')
+  $('ai-loading').style.display = 'flex'; el.innerHTML = ''; emp.style.display = 'none'
+
+  const out = document.createElement('div')
+  out.className = 'idea-card'
+  out.innerHTML = `<div class="idea-num">Streaming...</div><div class="idea-desc"></div>`
+  const target = out.querySelector('.idea-desc')
+
+  try {
+    let started = false
+    await streamDateIdeas({
+      n1:        state.cfg.n1,
+      n2:        state.cfg.n2,
+      tz1:       state.cfg.tz1,
+      tz2:       state.cfg.tz2,
+      since:     state.cfg.since,
+      interests: $('ai-inp').value.trim(),
+      onToken: (token) => {
+        if (!started) {
+          $('ai-loading').style.display = 'none'
+          el.appendChild(out)
+          started = true
+        }
+        target.textContent += token
+      },
+    })
+    $('ai-loading').style.display = 'none'
+  } catch (e) {
+    $('ai-loading').style.display = 'none'
+    emp.textContent = 'Could not stream ideas: ' + e.message; emp.style.display = 'block'
   }
 }
 
@@ -476,31 +776,92 @@ async function loadAll() {
 // ============================================================
 // UI HELPERS
 // ============================================================
-function switchTab(t, btn) {
-  ['home','chat','plans','story'].forEach(id => $('tab-' + id).style.display = 'none')
+const tabInited = { watch: false, together: false, rituals: false, story: false, life: false }
+function switchTab(tab, btn) {
+  ['home','chat','plans','story','watch','together','rituals','life'].forEach(id => {
+    const el = $('tab-' + id); if (el) el.style.display = 'none'
+  })
   document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'))
-  $('tab-' + t).style.display = 'block'; btn.classList.add('active')
-  if (t === 'chat') {
+  $('tab-' + tab).style.display = 'block'; btn.classList.add('active')
+  track('tab_view', { tab })
+  if (tab === 'chat') {
     state.unread = 0; $('chat-badge').style.display = 'none'
     setTimeout(() => { const c = $('chat-messages'); if (c) c.scrollTop = c.scrollHeight }, 50)
+    if (configured) db.markRoomMessagesRead().catch(console.error)
   }
+  if (tab === 'watch'    && !tabInited.watch)    { initWatchTab();    tabInited.watch    = true }
+  if (tab === 'together' && !tabInited.together) {
+    initTogetherTab(); initHeartbeat(); initSoundCapsules(); initMiniGame()
+    tabInited.together = true
+  }
+  if (tab === 'rituals'  && !tabInited.rituals)  { initRitualsTab();  initDreams();    tabInited.rituals = true }
+  if (tab === 'story'    && !tabInited.story)    { initMemoryBook();  initLetters();   initAlbum();   tabInited.story   = true }
+  if (tab === 'life'     && !tabInited.life)     { initLife();        tabInited.life   = true }
 }
 
 function copyCode() {
-  navigator.clipboard.writeText(state.room).catch(() => {})
-  const b = $('room-badge-text'); b.textContent = 'Copied!'
-  setTimeout(() => b.textContent = state.room, 1600)
+  // Tries native share first; falls back to clipboard copy
+  shareRoom()
+  const b = $('room-badge-text'); const orig = b.textContent
+  b.textContent = 'Sharing…'
+  setTimeout(() => b.textContent = orig || state.room, 1600)
 }
 
-function leaveRoom() {
-  if (!confirm('Leave this room? Your partner can re-invite you with the room code.')) return
+function tearDownActiveRoom() {
   unsubscribeRoom()
-  clearSession()
+  teardownWatch()
+  teardownTogether()
+  teardownRituals()
+  teardownMemory()
+  teardownHeartbeat()
+  teardownSoundCapsules()
+  teardownHarmony()
+  teardownReunion()
+  teardownLetters()
+  teardownDreams()
+  teardownLife()
+  teardownAnniversary()
+  teardownCoach()
+  teardownTone()
+  teardownMiniGame()
+  teardownHistory()
+  teardownMoodViz()
+  teardownWrapped()
+  teardownLocalCare()
+  teardownAlbum()
+  Object.keys(tabInited).forEach(k => tabInited[k] = false)
+  lastPartnerOnline = null
   state.room = null; state.cfg = null; state.me = null
-  state.messages = []; state.bucket = []; state.stones = []
+  state.messages = []; state.bucket = []; state.stones = []; state.watch = null
+  document.body.dataset.theme = 'warm'
+}
+
+// "Leave" now means "step back to your rooms list" — non-destructive.
+// Removing a room from this device happens from the rooms list.
+function leaveRoom() {
+  tearDownActiveRoom()
+  setActiveRoomCode(null)
   $('main-app').style.display = 'none'
-  $('onboarding').style.display = 'flex'
-  obShow('ob-land')
+  showRoomsList()
+}
+
+// Switch to a different room from the rooms-list
+async function switchToRoom(code) {
+  tearDownActiveRoom()
+  const membership = state.rooms.find(r => r.code === code)
+  if (!membership) { showRoomsList(); return }
+  try {
+    const data = await db.fetchRoom(code)
+    state.cfg = data; state.room = code; state.me = membership.me
+    setActiveRoomCode(code)
+    upsertRoomMembership({
+      code, me: membership.me, alias: data.alias, kind: data.kind, theme: data.theme,
+    })
+    startApp()
+  } catch (e) {
+    toast('Could not load room: ' + (e.message || 'unknown'))
+    showRoomsList()
+  }
 }
 
 // ============================================================
@@ -508,6 +869,53 @@ function leaveRoom() {
 // ============================================================
 $('bk-inp').addEventListener('keydown',  e => { if (e.key === 'Enter') addBucket() })
 $('chat-inp').addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage() })
+
+// Typing indicator over the existing room channel
+let chatTypingTimer = null
+let chatTypingChannel = null
+function chatTypingChan() {
+  if (chatTypingChannel || !configured || !sb || !state.room) return chatTypingChannel
+  chatTypingChannel = sb.channel(`chat-typing:${state.room}`, { config: { broadcast: { self: false } } })
+  chatTypingChannel.on('broadcast', { event: 'typing' }, ({ payload }) => {
+    if (payload.from === state.me) return
+    const el = $('chat-typing'); if (!el) return
+    if (payload.typing) {
+      el.textContent = `${state.theirName?.() || 'Partner'} is typing…`
+      el.style.display = ''
+      clearTimeout(chatTypingTimer)
+      chatTypingTimer = setTimeout(() => { el.style.display = 'none' }, 3500)
+    } else {
+      el.style.display = 'none'
+    }
+  }).subscribe()
+  return chatTypingChannel
+}
+let chatTypingDeadman = null
+$('chat-inp').addEventListener('input', () => {
+  const ch = chatTypingChan(); if (!ch) return
+  ch.send({ type: 'broadcast', event: 'typing', payload: { from: state.me, typing: true } })
+  clearTimeout(chatTypingDeadman)
+  chatTypingDeadman = setTimeout(() => {
+    ch.send({ type: 'broadcast', event: 'typing', payload: { from: state.me, typing: false } })
+  }, 1500)
+})
+// Image attach: click + paste + drag-drop
+const chatPicker = document.getElementById('chat-pick')
+const chatFile   = document.getElementById('chat-file')
+const chatBox    = document.getElementById('chat-messages')
+chatPicker?.addEventListener('click', () => chatFile?.click())
+chatFile?.addEventListener('change', e => { if (e.target.files?.[0]) setPendingImage(e.target.files[0]) })
+$('chat-inp')?.addEventListener('paste', e => {
+  const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'))
+  if (item) { e.preventDefault(); setPendingImage(item.getAsFile()) }
+})
+chatBox?.addEventListener('dragover', e => { e.preventDefault(); chatBox.classList.add('drag-active') })
+chatBox?.addEventListener('dragleave', () => chatBox.classList.remove('drag-active'))
+chatBox?.addEventListener('drop', e => {
+  e.preventDefault(); chatBox.classList.remove('drag-active')
+  const f = e.dataTransfer?.files?.[0]
+  if (f && f.type.startsWith('image/')) setPendingImage(f)
+})
 $('ms-title').addEventListener('keydown', e => { if (e.key === 'Enter') addMilestone() })
 $('j-code').addEventListener('input',     e => { e.target.value = e.target.value.toUpperCase() })
 
@@ -515,25 +923,62 @@ $('j-code').addEventListener('input',     e => { e.target.value = e.target.value
 // INIT
 // ============================================================
 async function init() {
+  initErrorMonitor()  // catch errors from boot onward
   initSelects()
 
   if (!configured) $('config-warn').style.display = 'block'
 
-  // Restore session from localStorage
-  const session = loadSession()
-  if (session && configured) {
-    try {
-      const data = await db.fetchRoom(session.code)
-      state.room = session.code; state.me = session.me; state.cfg = data
-      $('loading').style.display = 'none'
-      $('onboarding').style.display = 'none'
-      startApp(); return
-    } catch { clearSession() }
+  // Wire header back-to-rooms button
+  const backBtn = document.getElementById('hdr-back')
+  if (backBtn) backBtn.addEventListener('click', () => {
+    tearDownActiveRoom()
+    setActiveRoomCode(null)
+    $('main-app').style.display = 'none'
+    showRoomsList()
+  })
+
+  // Initialize auth (picks up existing session, mirrors rooms list to/from server)
+  if (configured) await initAuth()
+  initAccountButton()
+  initNotifications()  // service worker + push subscription if enabled
+  initPolish()         // a11y, ESC handlers, focus management
+  initI18n()           // locale detection + DOM translation
+  initAnalytics()      // events tracking
+
+  // Whenever auth state flips (sign-in, sign-out), refresh the rooms list view
+  onAuthChange(async () => {
+    try { await refreshRoomsList() } catch {}
+  })
+
+  // Load rooms membership + initialize the rooms-list screen
+  loadRoomsList()
+  if (configured) await initRoomsList(switchToRoom)
+
+  // Decide what to show first
+  $('loading').style.display = 'none'
+  const activeCode = getActiveRoomCode()
+  if (activeCode && configured) {
+    // Try to restore the active room directly
+    const membership = state.rooms.find(r => r.code === activeCode)
+    if (membership) {
+      try {
+        const data = await db.fetchRoom(activeCode)
+        state.room = activeCode; state.me = membership.me; state.cfg = data
+        $('onboarding').style.display = 'none'
+        hideRoomsList()
+        startApp()
+        return
+      } catch { setActiveRoomCode(null) }
+    }
   }
 
-  $('loading').style.display = 'none'
-  $('onboarding').style.display = 'flex'
-  obShow('ob-land')
+  // Show rooms list if user has rooms; otherwise show onboarding
+  if (state.rooms.length && configured) {
+    showRoomsList()
+  } else {
+    $('onboarding').style.display = 'flex'
+    obShow('ob-land')
+  }
 }
 
 // ============================================================
@@ -542,9 +987,21 @@ async function init() {
 window.app = {
   obShow, createRoom, joinRoom, pickPartner,
   updateVisit, saveNote, sendMessage,
-  genIdeas, addBucket,
+  genIdeas, streamIdeas, addBucket,
+
   addMilestone, removeMilestone,
   switchTab, copyCode, leaveRoom,
+  exportRoom: exportThisRoom,
+  shareRoom,
 }
 
-init()
+// Prevent blank screen: if init throws, hide loading and surface error
+init().catch((e) => {
+  console.error('[LDR] init() failed:', e)
+  const loading = document.getElementById('loading')
+  if (loading) loading.style.display = 'none'
+
+  const toastEl = document.getElementById('toast')
+  if (toastEl) {
+  }
+})

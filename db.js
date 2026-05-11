@@ -3,49 +3,20 @@ import { state } from './state.js'
 
 const today = () => new Date().toISOString().split('T')[0]
 
-// Helper to ensure text is ASCII-safe by removing or replacing non-ASCII characters
-function sanitizeForDB(obj) {
-  if (typeof obj === 'string') {
-    // Keep only ASCII and common punctuation/spaces
-    return obj.replace(/[^\x20-\x7E\n]/g, (char) => {
-      // For common letters with accents, try to replace with base letter
-      const replacements = {
-        'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
-        'á': 'a', 'à': 'a', 'â': 'a', 'ä': 'a', 'ã': 'a',
-        'ó': 'o', 'ò': 'o', 'ô': 'o', 'ö': 'o', 'õ': 'o',
-        'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
-        'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
-        'ñ': 'n', 'ç': 'c',
-      }
-      return replacements[char] || '?'
-    })
-  }
-  if (typeof obj === 'object' && obj !== null) {
-    const sanitized = {}
-    for (const [key, value] of Object.entries(obj)) {
-      sanitized[key] = sanitizeForDB(value)
-    }
-    return sanitized
-  }
-  return obj
-}
+// Postgres TEXT columns + Supabase JSON request bodies are UTF-8 end-to-end,
+// so emojis and accented characters pass through unchanged.
+// Identity function, kept so existing call sites don't need refactoring.
+function sanitizeForDB(obj) { return obj }
 
 // ── ROOMS ──────────────────────────────────────────────────
+export async function roomCodeExists(code) {
+  const { data } = await sb.from('rooms').select('id').eq('id', code).maybeSingle()
+  return !!data
+}
+
 export async function createRoomInDB(cfg) {
   try {
-    console.log('[DB] createRoomInDB called with cfg:', cfg)
     const cleanCfg = sanitizeForDB(cfg)
-    console.log('[DB] Sanitized cfg:', cleanCfg)
-    
-    // Log each field to check for non-ASCII characters
-    Object.entries(cleanCfg).forEach(([key, val]) => {
-      if (typeof val === 'string') {
-        const hasNonASCII = /[^\x20-\x7E\n]/.test(val)
-        console.log(`[DB] Field "${key}": "${val}" (non-ASCII: ${hasNonASCII})`)
-      }
-    })
-    
-    console.log('[DB] Attempting to insert into Supabase...')
     const { data, error } = await sb.from('rooms').insert(cleanCfg).select().single()
     
     if (error) {
@@ -74,9 +45,17 @@ export async function createRoomInDB(cfg) {
   }
 }
 
+// Translate known-bad TZ IDs that may live in old rows
+const TZ_FIXES = { 'Asia/Busan': 'Asia/Seoul' }
+function healTz(t) { return t && TZ_FIXES[t] ? TZ_FIXES[t] : t }
+
 export async function fetchRoom(code) {
   const { data, error } = await sb.from('rooms').select('*').eq('id', code).single()
   if (error) throw error
+  if (data) {
+    data.tz1 = healTz(data.tz1)
+    data.tz2 = healTz(data.tz2)
+  }
   return data
 }
 
@@ -93,28 +72,70 @@ export async function fetchMessages() {
   return data || []
 }
 
-export async function insertMessage(content) {
-  try {
-    const cleanContent = sanitizeForDB(content)
-    const { error } = await sb.from('messages').insert({
-      room_id:     state.room,
-      partner_idx: state.me,
-      content: cleanContent,
-    })
-    if (error) throw error
-  } catch (e) {
-    if (e.message?.includes('ISO-8859-1') || e.message?.includes('Headers')) {
-      console.warn('Message with special characters failed, storing as ASCII...')
-      const { error } = await sb.from('messages').insert({
-        room_id:     state.room,
-        partner_idx: state.me,
-        content: sanitizeForDB(content),
-      })
-      if (error) throw error
-    } else {
-      throw e
-    }
+export async function insertMessage(content, attachment) {
+  const row = {
+    room_id:     state.room,
+    partner_idx: state.me,
+    content:     content || '',
   }
+  if (attachment?.url) {
+    row.image_url  = attachment.url
+    row.image_kind = attachment.kind || 'image'
+  }
+  const { error } = await sb.from('messages').insert(row)
+  if (error) throw error
+}
+
+// Mark all unread messages in this room from the OTHER partner as read by me.
+export async function markRoomMessagesRead() {
+  const { data: unread } = await sb.from('messages')
+    .select('id,read_by,partner_idx').eq('room_id', state.room).neq('partner_idx', state.me).limit(200)
+  if (!unread?.length) return
+  const meKey = String(state.me)
+  const now = new Date().toISOString()
+  const updates = unread
+    .filter(m => !m.read_by?.[meKey])
+    .map(m => sb.from('messages').update({ read_by: { ...(m.read_by || {}), [meKey]: now } }).eq('id', m.id))
+  if (!updates.length) return
+  await Promise.allSettled(updates)
+}
+
+// Fetch all chat images in this room for the photo album.
+export async function fetchChatImages() {
+  const { data } = await sb.from('messages')
+    .select('id,partner_idx,image_url,content,created_at')
+    .eq('room_id', state.room).not('image_url', 'is', null)
+    .order('created_at', { ascending: false }).limit(200)
+  return data || []
+}
+
+// Export everything in a room as a single JSON blob (for backup / download).
+export async function exportRoomData() {
+  const tables = [
+    'rooms', 'messages', 'moods', 'notes', 'bucket_items', 'milestones',
+    'watch_sessions', 'daily_questions', 'daily_answers', 'sleep_events',
+    'memory_chapters', 'sound_capsules', 'reunion_sessions', 'heartbeat_sessions',
+    'future_letters', 'dreams', 'calendar_events', 'expenses', 'visa_items', 'care_pings',
+  ]
+  const out = { exported_at: new Date().toISOString(), room: state.room }
+  for (const t of tables) {
+    const col = (t === 'rooms') ? 'id' : 'room_id'
+    const { data } = await sb.from(t).select('*').eq(col, state.room)
+    out[t] = data || []
+  }
+  return out
+}
+
+// Upload a chat image to storage and return the public URL.
+export async function uploadChatImage(blob, kind = 'image') {
+  const ext = (blob.type.split('/')[1] || 'jpg').split('+')[0]
+  const path = `${state.room}/${Date.now()}-p${state.me}.${ext}`
+  const { error } = await sb.storage.from('chat-images').upload(path, blob, {
+    contentType: blob.type, upsert: true,
+  })
+  if (error) throw error
+  const { data } = sb.storage.from('chat-images').getPublicUrl(path)
+  return { url: data.publicUrl, kind }
 }
 
 // ── MOODS ──────────────────────────────────────────────────
@@ -252,5 +273,34 @@ export async function insertMilestone({ date, title, note }) {
 
 export async function deleteMilestone(id) {
   const { error } = await sb.from('milestones').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ── WATCH SESSION ──────────────────────────────────────────
+export async function fetchWatchSession() {
+  const { data, error } = await sb.from('watch_sessions')
+    .select('*').eq('room_id', state.room).maybeSingle()
+  if (error && error.code !== 'PGRST116') throw error
+  return data || null
+}
+
+export async function upsertWatchSession({ source, media_id, is_playing, position }) {
+  const { error } = await sb.from('watch_sessions').upsert({
+    room_id:     state.room,
+    source,
+    media_id,
+    is_playing:  !!is_playing,
+    position:    Number(position) || 0,
+    position_at: new Date().toISOString(),
+    updated_by:  state.me,
+    updated_at:  new Date().toISOString(),
+  }, { onConflict: 'room_id' })
+  if (error) throw error
+}
+
+export async function updateWatchQueue(queue) {
+  const { error } = await sb.from('watch_sessions')
+    .update({ queue, updated_by: state.me, updated_at: new Date().toISOString() })
+    .eq('room_id', state.room)
   if (error) throw error
 }

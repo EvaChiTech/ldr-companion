@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LDR Companion — The shared space for couples, families and friends across distance</title>
+<meta name="description" content="Real-time chat, co-watching, heartbeat sync, deep daily questions, AI memory book, and more. Built for couples, families, and friends across miles.">
+<meta name="theme-color" content="#C4594A">
+<meta property="og:title" content="LDR Companion">
+<meta property="og:description" content="The shared space for everyone you love who lives far away.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/og-image.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♡</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAF6EE; --surface: #FFFFFF; --primary: #C4594A; --secondary: #2A5F7A;
+    --gold: #D4945A; --text: #231510; --text-2: #7A5C52; --text-3: #B8A49E;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', system-ui, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* Header */
+  header { padding: 24px 0; }
+  .nav { display: flex; justify-content: space-between; align-items: center; }
+  .logo { font-family: var(--serif); font-size: 22px; }
+  .nav-cta { background: var(--primary); color: #fff; padding: 9px 18px; border-radius: 999px; text-decoration: none; font-size: 14px; font-weight: 500; transition: background .15s; }
+  .nav-cta:hover { background: #A8473A; }
+
+  /* Hero */
+  .hero { padding: 60px 0 80px; text-align: center; }
+  .hero h1 { font-family: var(--serif); font-size: clamp(40px, 6vw, 68px); font-weight: 400; line-height: 1.1; margin-bottom: 22px; }
+  .hero h1 em { font-style: italic; color: var(--primary); }
+  .hero p { font-size: clamp(16px, 2vw, 19px); color: var(--text-2); max-width: 620px; margin: 0 auto 32px; }
+  .hero-ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn-primary { background: var(--primary); color: #fff; padding: 14px 28px; border-radius: 999px; text-decoration: none; font-weight: 500; font-size: 15px; transition: transform .12s, background .15s; display: inline-flex; align-items: center; gap: 8px; }
+  .btn-primary:hover { background: #A8473A; transform: translateY(-1px); }
+  .btn-ghost { color: var(--text-2); padding: 14px 22px; text-decoration: none; font-weight: 500; font-size: 15px; }
+  .hero-footnote { margin-top: 22px; font-size: 13px; color: var(--text-3); }
+
+  /* Sections */
+  section { padding: 72px 0; }
+  section h2 { font-family: var(--serif); font-size: clamp(30px, 4vw, 42px); font-weight: 400; text-align: center; margin-bottom: 16px; }
+  section .sub { text-align: center; color: var(--text-2); max-width: 580px; margin: 0 auto 48px; }
+
+  /* Features grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; }
+  .feature { background: var(--surface); padding: 28px; border-radius: 16px; border: 1px solid rgba(35,21,16,0.08); transition: transform .15s, box-shadow .15s; }
+  .feature:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(35,21,16,0.07); }
+  .feature .emoji { font-size: 38px; margin-bottom: 16px; line-height: 1; }
+  .feature h3 { font-family: var(--serif); font-size: 22px; font-weight: 500; margin-bottom: 8px; }
+  .feature p { font-size: 14px; color: var(--text-2); line-height: 1.7; }
+
+  /* Quote */
+  .quote-section { background: linear-gradient(135deg, #FFF1E5, #FCEFE6); padding: 80px 0; text-align: center; }
+  .quote { font-family: var(--serif); font-size: clamp(22px, 3vw, 32px); font-weight: 400; max-width: 760px; margin: 0 auto; line-height: 1.4; color: var(--text); font-style: italic; }
+  .quote-attr { margin-top: 18px; font-size: 13px; color: var(--text-3); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  /* Audience */
+  .audience { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px; max-width: 880px; margin: 0 auto; }
+  .audience-card { text-align: center; padding: 32px 18px; background: var(--surface); border-radius: 16px; border: 1px solid rgba(35,21,16,0.08); }
+  .audience-card .emoji { font-size: 44px; margin-bottom: 12px; line-height: 1; }
+  .audience-card h4 { font-family: var(--serif); font-size: 19px; font-weight: 500; margin-bottom: 6px; }
+  .audience-card p { font-size: 13px; color: var(--text-2); }
+
+  /* Final CTA */
+  .final { background: linear-gradient(135deg, var(--primary), var(--gold)); color: #fff; padding: 80px 0; text-align: center; }
+  .final h2 { color: #fff; }
+  .final .sub { color: rgba(255,255,255,0.92); }
+  .final .btn-primary { background: #fff; color: var(--primary); }
+  .final .btn-primary:hover { background: rgba(255,255,255,0.92); }
+
+  /* Footer */
+  footer { padding: 40px 0 60px; text-align: center; color: var(--text-3); font-size: 13px; }
+  footer a { color: var(--text-2); text-decoration: none; margin: 0 12px; }
+  footer a:hover { color: var(--primary); }
+
+  @media (max-width: 640px) {
+    section { padding: 56px 0; }
+    .hero { padding: 40px 0 60px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <nav class="nav">
+      <div class="logo">LDR Companion ♡</div>
+      <a href="/" class="nav-cta">Open the app →</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <h1>Distance is the<br><em>only thing</em> we can't fix.</h1>
+    <p>Real-time chat, synced clocks, co-watching, heartbeat sync, deep daily questions, AI memory book, and a hundred other ways to feel close. Built for the people you love who live far away.</p>
+    <div class="hero-ctas">
+      <a href="/" class="btn-primary">Start free — open the app →</a>
+      <a href="#features" class="btn-ghost">See what it does ↓</a>
+    </div>
+    <div class="hero-footnote">No app store. No download. Works on every device. Free forever.</div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <h2>Built for being apart, designed for feeling near.</h2>
+    <p class="sub">Twenty features no other LDR app has. From thumb-kiss to heartbeat sync to AI-curated date nights — every detail engineered to close the distance.</p>
+    <div class="grid">
+      <div class="feature"><div class="emoji">💗</div><h3>Heartbeat sync</h3><p>Place your finger on the camera. Real PPG reads your pulse. Both BPMs broadcast to each other in real time, glowing brighter as they sync.</p></div>
+      <div class="feature"><div class="emoji">📺</div><h3>Watch together</h3><p>Sub-200ms YouTube + video sync. Live reactions, chat overlay, save-the-moment, AI date-night picker. Like sitting on the same couch.</p></div>
+      <div class="feature"><div class="emoji">💞</div><h3>Thumb kiss + canvas</h3><p>Tap the same spot on the shared canvas at the same time — twelve hearts erupt. Doodle love notes together. Send animated care packages.</p></div>
+      <div class="feature"><div class="emoji">🌙</div><h3>Deep daily questions</h3><p>Aron-level intimacy questions, curated by AI. Light/medium/deep dial. Themed nights. Voice answers. Both reveal at once.</p></div>
+      <div class="feature"><div class="emoji">📮</div><h3>Audio postcards</h3><p>30-second recordings of where you are right now — coffee shop, evening street, your room. The sound of their day in your pocket.</p></div>
+      <div class="feature"><div class="emoji">📖</div><h3>AI memory book</h3><p>Claude reads everything you've shared and writes your year as 6 narrative chapters. The longer you use it, the more irreplaceable.</p></div>
+      <div class="feature"><div class="emoji">🛟</div><h3>Real-life logistics</h3><p>Shared calendar in both timezones, Splitwise for the two of you, visa & paperwork tracker, and care pings for sick days.</p></div>
+      <div class="feature"><div class="emoji">🎁</div><h3>Send food to their city</h3><p>AI finds real services in their city — Wolt, Coupang, local florists — that match their current mood. One tap to send.</p></div>
+      <div class="feature"><div class="emoji">💫</div><h3>Reunion mode</h3><p>When you're physically together, the app transforms. Distance widgets dim, in-person tools light up. Couple-cam, restaurant decider, memory-saver.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="quote-section">
+  <div class="wrap">
+    <p class="quote">"We don't sell features. We sell the feeling of being in the same room."</p>
+    <div class="quote-attr">The promise</div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>For everyone who matters who lives far away.</h2>
+    <p class="sub">Couples are just the beginning. Multi-room support means one account, every relationship.</p>
+    <div class="audience">
+      <div class="audience-card"><div class="emoji">💕</div><h4>Lovers</h4><p>The original use case.</p></div>
+      <div class="audience-card"><div class="emoji">🏡</div><h4>Family</h4><p>Stay in your parents' day.</p></div>
+      <div class="audience-card"><div class="emoji">👨‍👧</div><h4>Parent · Child</h4><p>Kid away at college. Grandkid on another continent.</p></div>
+      <div class="audience-card"><div class="emoji">🧑‍🤝‍🧑</div><h4>Siblings</h4><p>Stay close as life pulls you apart.</p></div>
+      <div class="audience-card"><div class="emoji">🌿</div><h4>Chosen family</h4><p>The people who chose you back.</p></div>
+      <div class="audience-card"><div class="emoji">🤝</div><h4>Best friends</h4><p>Distance shouldn't dilute it.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2>Open it now.</h2>
+    <p class="sub">Free forever. Works on every device. No download. Sign in once, syncs everywhere.</p>
+    <a href="/" class="btn-primary">Start your shared room →</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Made with care for everyone who loves at a distance.<br><br>
+    <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> · <a href="/">Open the app</a>
+  </div>
+</footer>
+
+</body>
+</html>
