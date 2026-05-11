@@ -1,7 +1,7 @@
 # LDR Companion — VS Code Setup Guide
 
 A real-time long-distance relationship web app.
-Built for Emeka (Seoul, South Korea) & Aino (Helsinki, Finland) — 8 hours apart.
+Built for people far away from each other to keep each other connected in real time.
 
 **Stack:** Vite · Vanilla JS (ES modules) · Supabase · Claude AI
 
