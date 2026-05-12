@@ -34,6 +34,9 @@ import { maybeShowWelcome, showWelcomeForce } from './welcome.js'
 import { initErrorMonitor } from './errors.js'
 import { initAlbum, teardownAlbum, onRemoteAlbumUpdate } from './album.js'
 import { initDarkToggle, exportThisRoom, shareRoom } from './preferences.js'
+import { initStats, refreshStats, teardownStats } from './stats.js'
+import { Analytics } from '@vercel/analytics/next';
+
 
 // ============================================================
 // TIMEZONE DATA — defaults to Seoul + Helsinki (Emeka & Aino)
@@ -268,6 +271,7 @@ function startApp() {
     initMoodViz()
     initWrapped()
     initLocalCare()
+    initStats()
     loadAll()
   } else {
     $('mood-their-val').textContent = 'Connect to sync'
@@ -829,6 +833,7 @@ function tearDownActiveRoom() {
   teardownWrapped()
   teardownLocalCare()
   teardownAlbum()
+  teardownStats()
   Object.keys(tabInited).forEach(k => tabInited[k] = false)
   lastPartnerOnline = null
   state.room = null; state.cfg = null; state.me = null
@@ -1005,3 +1010,14 @@ init().catch((e) => {
   if (toastEl) {
   }
 })
+
+function MyApp({ Component, pageProps }) {
+  return (
+    <>
+    <Component {...pageProps} />
+    <Analytics />
+    </>
+  );
+}
+
+export default MyApp

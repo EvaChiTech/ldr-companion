@@ -33,12 +33,14 @@ async function addEvent() {
   const dt    = document.getElementById('cal-when').value
   const dur   = parseInt(document.getElementById('cal-dur').value, 10) || 60
   const kind  = document.getElementById('cal-kind').value
+  const recurrence = document.getElementById('cal-recurrence')?.value || null
   if (!title || !dt) { showToast('Title + date required'); return }
   try {
     await sb.from('calendar_events').insert({
       room_id: state.room, title,
       starts_at: new Date(dt).toISOString(),
       duration_min: dur, kind,
+      recurrence: (recurrence === 'none' ? null : recurrence) || null,
       created_by: state.me,
     })
     document.getElementById('cal-title').value = ''
@@ -46,6 +48,24 @@ async function addEvent() {
     showToast('Event added 📅')
     await renderEvents()
   } catch (e) { showToast('Could not save: ' + e.message) }
+}
+
+// Expand a recurring event into virtual occurrences within [now-7d, now+60d]
+function expandOccurrences(ev) {
+  if (!ev.recurrence) return [ev]
+  const out = []
+  const start  = new Date(ev.starts_at)
+  const lookAhead = new Date(); lookAhead.setDate(lookAhead.getDate() + 60)
+  const lookBack  = new Date(); lookBack.setDate(lookBack.getDate() - 7)
+  const stepDays = ev.recurrence === 'weekly' ? 7 : ev.recurrence === 'biweekly' ? 14 : ev.recurrence === 'monthly' ? 30 : 365
+  let occ = new Date(start)
+  // Roll forward to the first occurrence >= lookBack
+  while (occ < lookBack) occ.setDate(occ.getDate() + stepDays)
+  while (occ <= lookAhead) {
+    out.push({ ...ev, starts_at: occ.toISOString(), id: `${ev.id}-${occ.getTime()}`, _virtual: occ.getTime() !== start.getTime() })
+    occ = new Date(occ); occ.setDate(occ.getDate() + stepDays)
+  }
+  return out
 }
 
 async function deleteEvent(id) {
@@ -57,23 +77,28 @@ async function renderEvents() {
   const list = document.getElementById('cal-list')
   if (!list) return
   const events = await fetchEvents()
-  if (!events.length) { list.innerHTML = '<div class="empty-state">No events yet. Plan your next call, visit, or shared moment.</div>'; return }
+  // Expand recurring events into virtual occurrences
+  const expanded = events.flatMap(expandOccurrences).sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
+  if (!expanded.length) { list.innerHTML = '<div class="empty-state">No events yet. Plan your next call, visit, or shared moment.</div>'; return }
   const tz1 = state.cfg?.tz1, tz2 = state.cfg?.tz2
   const fmt = (iso, tz) => new Date(iso).toLocaleString('en-US', {
     timeZone: tz, weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
   })
-  list.innerHTML = events.map(e => `
-    <div class="cal-card kind-${e.kind || 'other'}">
+  list.innerHTML = expanded.map(e => {
+    const realId = String(e.id).split('-')[0]  // virtual ids are "id-timestamp"
+    const recurBadge = e.recurrence ? `<span class="cal-recur">↻ ${e.recurrence}</span>` : ''
+    return `
+    <div class="cal-card kind-${e.kind || 'other'}${e._virtual ? ' virtual' : ''}">
       <div class="cal-title-row">
-        <div class="cal-title">${escapeHtml(e.title)}</div>
-        <button class="cal-del" data-id="${e.id}" title="Remove">×</button>
+        <div class="cal-title">${escapeHtml(e.title)} ${recurBadge}</div>
+        ${e._virtual ? '' : `<button class="cal-del" data-id="${realId}" title="Remove">×</button>`}
       </div>
       <div class="cal-times">
         <div><span class="cal-tz-label">${escapeHtml(state.cfg.n1)}</span> ${fmt(e.starts_at, tz1)}</div>
         <div><span class="cal-tz-label">${escapeHtml(state.cfg.n2)}</span> ${fmt(e.starts_at, tz2)}</div>
       </div>
       <div class="cal-meta">${e.duration_min || 60} min · ${escapeHtml(e.kind || 'event')}</div>
-    </div>`).join('')
+    </div>`}).join('')
   list.querySelectorAll('.cal-del').forEach(b => b.addEventListener('click', () => deleteEvent(parseInt(b.dataset.id, 10))))
 }
 

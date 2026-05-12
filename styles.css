@@ -1946,3 +1946,45 @@ body.dark-mode .auth-card,
 body.dark-mode .lc-card,
 body.dark-mode .tone-card,
 body.dark-mode .welcome-card { background: var(--surface); color: var(--text); }
+
+/* ── Round 10: stats dashboard, recurring events ──── */
+.stats-card {
+  background: linear-gradient(135deg, #FFF8F0 0%, #FCEFE6 50%, #F2E6D5 100%);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.stats-pill {
+  display: inline-block;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.12em;
+  background: var(--primary); color: #fff;
+  padding: 4px 10px; border-radius: 999px;
+  margin-bottom: 16px;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+.stat-tile {
+  background: rgba(255,255,255,0.65);
+  padding: 14px 10px;
+  border-radius: var(--r-sm);
+  text-align: center;
+  border: 1px solid var(--border);
+}
+.stat-emoji { font-size: 22px; line-height: 1; margin-bottom: 6px; }
+.stat-num   { font-family: var(--serif); font-size: 26px; line-height: 1; color: var(--primary); margin-bottom: 4px; }
+.stat-lbl   { font-size: 11px; color: var(--text-2); line-height: 1.3; }
+.stats-loading { color: var(--text-3); padding: 20px 0; text-align: center; }
+
+/* Recurring event badge */
+.cal-recur {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px; padding: 2px 8px; border-radius: 999px;
+  background: var(--secondary-l); color: var(--secondary);
+  letter-spacing: 0.04em;
+}
+.cal-card.virtual { opacity: 0.85; }
+.cal-card.virtual .cal-title { font-style: italic; }

@@ -37,111 +37,111 @@
     <div id="ob-land" style="display:none;">
       <div class="hero">
         <div class="hero-logo">LDR<br>Companion</div>
-        <p class="hero-sub">Real-time connected. Thoughtfully crafted.<br>Your shared space across every mile.</p>
+        <p class="hero-sub"><span data-i18n="hero_subtitle">Real-time connected. Thoughtfully crafted.</span><br><span data-i18n="hero_subtitle_line2">Your shared space across every mile.</span></p>
       </div>
       <div class="ob-cards">
         <div class="ob-card" onclick="window.app.obShow('ob-create')">
-          <h3>Create</h3>
-          <p>Start a new shared room</p>
+          <h3 data-i18n="ob_create_title">Create</h3>
+          <p data-i18n="ob_create_sub">Start a new shared room</p>
         </div>
         <div class="ob-card" onclick="window.app.obShow('ob-join')">
-          <h3>Join</h3>
-          <p>Have a room code?</p>
+          <h3 data-i18n="ob_join_title">Join</h3>
+          <p data-i18n="ob_join_sub">Have a room code?</p>
         </div>
       </div>
       <div id="config-warn" class="notice warn" style="display:none;">
-        <strong>⚠ Setup needed:</strong> Copy <code>.env.example</code> → <code>.env</code> and fill in your project keys. See <code>README.md</code>.
+        <strong data-i18n="ob_setup_needed">⚠ Setup needed:</strong> <span data-i18n="ob_setup_body">Copy .env.example → .env and fill in your project keys. See README.md.</span>
       </div>
     </div>
 
     <div id="ob-create" style="display:none;">
-      <button class="btn-back" onclick="window.app.obShow('ob-land')">← Back</button>
-      <h2 class="ob-title">Create your room</h2>
-      <p class="ob-sub">You'll get a code to share with the other person</p>
+      <button class="btn-back" onclick="window.app.obShow('ob-land')" data-i18n="btn_back">← Back</button>
+      <h2 class="ob-title" data-i18n="ob_create_heading">Create your room</h2>
+      <p class="ob-sub" data-i18n="ob_create_sub2">You'll get a code to share with the other person</p>
 
       <div class="form-card">
-        <div class="form-section-label">Room basics</div>
+        <div class="form-section-label" data-i18n="ob_room_basics">Room basics</div>
         <div class="grid-2" style="margin-bottom:12px;">
           <div class="field">
-            <label>What kind of room?</label>
+            <label data-i18n="ob_kind_label">What kind of room?</label>
             <select id="c-kind">
-              <option value="couple">Lover 💕</option>
-              <option value="family">Family 🏡</option>
-              <option value="parent_child">Parent · Child 👨‍👧</option>
-              <option value="siblings">Siblings 🧑‍🤝‍🧑</option>
-              <option value="chosen_family">Chosen family 🌿</option>
-              <option value="friend">Friend 🤝</option>
-              <option value="other">Other ✨</option>
+              <option value="couple"        data-i18n="ob_kind_couple">Lover 💕</option>
+              <option value="family"        data-i18n="ob_kind_family">Family 🏡</option>
+              <option value="parent_child"  data-i18n="ob_kind_parent_child">Parent · Child 👨‍👧</option>
+              <option value="siblings"      data-i18n="ob_kind_siblings">Siblings 🧑‍🤝‍🧑</option>
+              <option value="chosen_family" data-i18n="ob_kind_chosen">Chosen family 🌿</option>
+              <option value="friend"        data-i18n="ob_kind_friend">Friend 🤝</option>
+              <option value="other"         data-i18n="ob_kind_other">Other ✨</option>
             </select>
           </div>
           <div class="field">
-            <label>Theme</label>
+            <label data-i18n="ob_theme_label">Theme</label>
             <select id="c-theme">
-              <option value="warm">Warm (default)</option>
-              <option value="ocean">Ocean 🌊</option>
-              <option value="forest">Forest 🌲</option>
-              <option value="sunset">Sunset 🌅</option>
-              <option value="lavender">Lavender 💜</option>
-              <option value="mono">Mono ⚪</option>
-              <option value="noir">Noir ⚫</option>
+              <option value="warm"     data-i18n="ob_theme_warm">Warm (default)</option>
+              <option value="ocean"    data-i18n="ob_theme_ocean">Ocean 🌊</option>
+              <option value="forest"   data-i18n="ob_theme_forest">Forest 🌲</option>
+              <option value="sunset"   data-i18n="ob_theme_sunset">Sunset 🌅</option>
+              <option value="lavender" data-i18n="ob_theme_lavender">Lavender 💜</option>
+              <option value="mono"     data-i18n="ob_theme_mono">Mono ⚪</option>
+              <option value="noir"     data-i18n="ob_theme_noir">Noir ⚫</option>
             </select>
           </div>
         </div>
         <div class="grid-2" style="margin-bottom:12px;">
           <div class="field">
-            <label>Room nickname (optional)</label>
-            <input id="c-alias" type="text" placeholder="e.g. Aino & Emeka, Mom, Best friends">
+            <label data-i18n="ob_alias_label">Room nickname (optional)</label>
+            <input id="c-alias" type="text" data-i18n-placeholder="ob_alias_ph" placeholder="e.g. Aino & Emeka, Mom, Best friends">
           </div>
           <div class="field">
-            <label>Custom room code (optional)</label>
-            <input id="c-code" type="text" maxlength="20" placeholder="e.g. AINOEMEKA">
+            <label data-i18n="ob_code_label">Custom room code (optional)</label>
+            <input id="c-code" type="text" maxlength="20" data-i18n-placeholder="ob_code_ph" placeholder="e.g. AINOEMEKA">
           </div>
         </div>
       </div>
 
       <div class="form-card">
-        <div class="form-section-label">You</div>
+        <div class="form-section-label" data-i18n="ob_you">You</div>
         <div class="grid-2">
-          <div class="field"><label>Your name</label><input id="c-n1" type="text" placeholder="Emeka"></div>
-          <div class="field"><label>Your timezone</label><select id="c-tz1"></select></div>
+          <div class="field"><label data-i18n="ob_your_name">Your name</label><input id="c-n1" type="text" placeholder="Emeka"></div>
+          <div class="field"><label data-i18n="ob_your_tz">Your timezone</label><select id="c-tz1"></select></div>
         </div>
       </div>
       <div class="form-card">
-        <div class="form-section-label">The other person</div>
+        <div class="form-section-label" data-i18n="ob_other_person">The other person</div>
         <div class="grid-2">
-          <div class="field"><label>Their name</label><input id="c-n2" type="text" placeholder="Aino"></div>
-          <div class="field"><label>Their timezone</label><select id="c-tz2"></select></div>
+          <div class="field"><label data-i18n="ob_their_name">Their name</label><input id="c-n2" type="text" placeholder="Aino"></div>
+          <div class="field"><label data-i18n="ob_their_tz">Their timezone</label><select id="c-tz2"></select></div>
         </div>
       </div>
       <div class="form-card">
         <div class="grid-2" style="margin-bottom:12px;">
-          <div class="field"><label>Together since</label><input id="c-since" type="date"></div>
-          <div class="field"><label>Next visit (optional)</label><input id="c-visit" type="date"></div>
+          <div class="field"><label data-i18n="ob_since">Together since</label><input id="c-since" type="date"></div>
+          <div class="field"><label data-i18n="ob_visit">Next visit (optional)</label><input id="c-visit" type="date"></div>
         </div>
-        <div class="field"><label>Shared interests — for personalized date ideas</label>
-          <input id="c-interests" type="text" placeholder="e.g. cooking, hiking, anime, jazz, K-drama, travel"></div>
+        <div class="field"><label data-i18n="ob_interests_label">Shared interests — for personalized date ideas</label>
+          <input id="c-interests" type="text" data-i18n-placeholder="ob_interests_ph" placeholder="e.g. cooking, hiking, anime, jazz, K-drama, travel"></div>
       </div>
-      <button class="btn btn-primary btn-full" onclick="window.app.createRoom()">Create room →</button>
+      <button class="btn btn-primary btn-full" onclick="window.app.createRoom()" data-i18n="ob_create_btn">Create room →</button>
       <div id="c-err" class="form-error" style="display:none;"></div>
     </div>
 
     <div id="ob-join" style="display:none;">
-      <button class="btn-back" onclick="window.app.obShow('ob-land')">← Back</button>
-      <h2 class="ob-title">Join a room</h2>
-      <p class="ob-sub">Enter the code your partner shared</p>
+      <button class="btn-back" onclick="window.app.obShow('ob-land')" data-i18n="btn_back">← Back</button>
+      <h2 class="ob-title" data-i18n="ob_join_heading">Join a room</h2>
+      <p class="ob-sub" data-i18n="ob_join_sub2">Enter the code your partner shared</p>
       <div class="form-card">
         <div class="field">
-          <label>Room code</label>
+          <label data-i18n="ob_room_code">Room code</label>
           <input id="j-code" type="text" class="code-input" placeholder="AB3X7K2P" maxlength="8">
         </div>
       </div>
-      <button class="btn btn-primary btn-full" onclick="window.app.joinRoom()">Find room →</button>
+      <button class="btn btn-primary btn-full" onclick="window.app.joinRoom()" data-i18n="ob_join_btn">Find room →</button>
       <div id="j-err" class="form-error" style="display:none;"></div>
     </div>
 
     <div id="ob-pick" style="display:none;">
-      <h2 class="ob-title">Which one are you?</h2>
-      <p class="ob-sub">Select your profile to continue</p>
+      <h2 class="ob-title" data-i18n="ob_pick_heading">Which one are you?</h2>
+      <p class="ob-sub" data-i18n="ob_pick_sub">Select your profile to continue</p>
       <div class="ob-cards">
         <div class="ob-card tall" onclick="window.app.pickPartner(1)">
           <h3 id="pk-n1"></h3><p id="pk-tz1"></p>
@@ -229,10 +229,10 @@
 
       <div class="card cd-card">
         <div class="cd-top">
-          <div class="slabel">Next visit</div>
+          <div class="slabel" data-i18n="home_visit_label">Next visit</div>
           <div class="cd-update">
             <input id="h-vi" type="date">
-            <button class="btn btn-secondary btn-sm" onclick="window.app.updateVisit()">Update</button>
+            <button class="btn btn-secondary btn-sm" onclick="window.app.updateVisit()" data-i18n="visit_update">Update</button>
           </div>
         </div>
         <div class="cd-big" id="h-cdnum"></div>
@@ -244,7 +244,7 @@
       </div>
 
       <div class="card mood-card">
-        <div class="slabel">Today's mood</div>
+        <div class="slabel" data-i18n="home_mood_today">Today's mood</div>
         <div class="grid-2">
           <div>
             <div class="field-label" id="mood-my-lbl"></div>
@@ -253,7 +253,7 @@
           <div>
             <div class="field-label" id="mood-their-lbl"></div>
             <div id="mood-their-val" class="mood-their"></div>
-            <button id="mood-send-btn" class="btn btn-secondary btn-sm mood-send-btn" type="button">🎁 Send something to them</button>
+            <button id="mood-send-btn" class="btn btn-secondary btn-sm mood-send-btn" type="button" data-i18n="home_send_care">🎁 Send something to them</button>
           </div>
         </div>
       </div>
@@ -262,15 +262,17 @@
 
       <div id="hist-card" class="card hist-card" style="display:none;"></div>
 
+      <div id="stats-card" class="card stats-card" style="display:none;"></div>
+
       <div class="card reunion-card">
-        <div class="slabel">In the same place?</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Tap when you're physically together. Distance widgets dim, in-person tools come alive.</p>
-        <button id="reunion-start" class="btn btn-primary btn-sm">💫 Begin reunion mode</button>
+        <div class="slabel" data-i18n="home_reunion_card">In the same place?</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="home_reunion_sub">Tap when you're physically together. Distance widgets dim, in-person tools come alive.</p>
+        <button id="reunion-start" class="btn btn-primary btn-sm" data-i18n="home_reunion_btn">💫 Begin reunion mode</button>
       </div>
 
       <div class="card mood-viz-card">
         <div class="mood-viz-head">
-          <div class="slabel">Your moods, side by side</div>
+          <div class="slabel" data-i18n="home_mood_viz">Your moods, side by side</div>
           <div id="mood-range" class="mood-range">
             <button data-range="30"  type="button">30 d</button>
             <button data-range="90"  type="button">90 d</button>
@@ -283,12 +285,12 @@
       </div>
 
       <div class="card coach-card">
-        <div class="slabel">A small noticing</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">A gentle weekly observation drawn from your moods, notes, sleep, and message rhythm. Press to ask.</p>
-        <button id="coach-btn" class="btn btn-secondary btn-sm">Notice this week 🧭</button>
+        <div class="slabel" data-i18n="home_coach_label">A small noticing</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="home_coach_sub">A gentle weekly observation drawn from your moods, notes, sleep, and message rhythm.</p>
+        <button id="coach-btn" class="btn btn-secondary btn-sm" data-i18n="home_coach_btn">Notice this week 🧭</button>
         <div id="coach-loading" class="loading-text" style="display:none;">
           <span class="ldot"></span><span class="ldot"></span><span class="ldot"></span>
-          Reading your week…
+          <span data-i18n="home_coach_loading">Reading your week…</span>
         </div>
         <div id="coach-out"></div>
       </div>
@@ -296,10 +298,10 @@
       <div class="grid-2">
         <div class="card note-card">
           <div class="slabel" id="note-my-lbl"></div>
-          <textarea id="h-mynote" placeholder="Write something to remember today by..."></textarea>
+          <textarea id="h-mynote" data-i18n-placeholder="home_note_ph" placeholder="Write something to remember today by..."></textarea>
           <div class="note-footer">
-            <span id="note-ok" class="save-ok" style="display:none;">Saved ✓</span>
-            <button class="btn btn-secondary btn-sm" onclick="window.app.saveNote()">Save</button>
+            <span id="note-ok" class="save-ok" style="display:none;" data-i18n="home_note_saved">Saved ✓</span>
+            <button class="btn btn-secondary btn-sm" onclick="window.app.saveNote()" data-i18n="btn_save">Save</button>
           </div>
         </div>
         <div class="card note-card">
@@ -313,18 +315,18 @@
     <div id="tab-chat" class="tab-panel" style="display:none;">
       <div class="chat-info">
         <span class="live-dot" style="background:var(--secondary);"></span>
-        Live — messages appear instantly on both devices.
+        <span data-i18n="chat_info">Live — messages appear instantly on both devices.</span>
       </div>
       <div class="card chat-card">
         <div id="chat-messages"></div>
         <div id="chat-typing" class="chat-typing" style="display:none;"></div>
         <div id="chat-pending" class="chat-pending" style="display:none;"></div>
         <div class="chat-input-row">
-          <button id="chat-pick" class="btn btn-ghost btn-sm" type="button" title="Attach photo">📎</button>
+          <button id="chat-pick" class="btn btn-ghost btn-sm" type="button" data-i18n-title="chat_attach" title="Attach photo">📎</button>
           <input id="chat-file" type="file" accept="image/*" style="display:none;">
-          <input id="chat-inp" type="text" placeholder="Type a message, paste an image, or drop a photo...">
-          <button id="tone-btn" class="btn btn-ghost btn-sm" type="button" title="Check tone before sending">🪞</button>
-          <button class="btn btn-primary" onclick="window.app.sendMessage()">Send</button>
+          <input id="chat-inp" type="text" data-i18n-placeholder="chat_placeholder" placeholder="Type a message, paste an image, or drop a photo...">
+          <button id="tone-btn" class="btn btn-ghost btn-sm" type="button" data-i18n-title="chat_tone_check" title="Check tone before sending">🪞</button>
+          <button class="btn btn-primary" onclick="window.app.sendMessage()" data-i18n="btn_send">Send</button>
         </div>
       </div>
     </div>
@@ -332,40 +334,40 @@
     <!-- PLANS -->
     <div id="tab-plans" class="tab-panel" style="display:none;">
       <div class="card">
-        <div class="slabel">Date ideas</div>
+        <div class="slabel" data-i18n="plans_ideas_label">Date ideas</div>
         <div class="input-row mb-14">
-          <input id="ai-inp" type="text" placeholder="Your interests: cooking, anime, jazz, stargazing...">
-          <button class="btn btn-primary btn-sm" onclick="window.app.genIdeas()">Generate →</button>
-          <button class="btn btn-secondary btn-sm" onclick="window.app.streamIdeas()">Generate (stream)</button>
+          <input id="ai-inp" type="text" data-i18n-placeholder="plans_ideas_ph" placeholder="Your interests: cooking, anime, jazz, stargazing...">
+          <button class="btn btn-primary btn-sm" onclick="window.app.genIdeas()" data-i18n="plans_ideas_btn">Generate →</button>
+          <button class="btn btn-secondary btn-sm" onclick="window.app.streamIdeas()" data-i18n="plans_ideas_btn_stream">Generate (stream)</button>
         </div>
 
         <div id="ai-loading" class="loading-text" style="display:none;">
           <span class="ldot"></span><span class="ldot"></span><span class="ldot"></span>
-          Crafting ideas just for you two...
+          <span data-i18n="plans_ideas_loading">Crafting ideas just for you two...</span>
         </div>
         <div id="ai-results"></div>
-        <div id="ai-empty" class="empty-state">Enter your shared interests and we'll craft personalized date ideas just for you two.</div>
+        <div id="ai-empty" class="empty-state" data-i18n="plans_ideas_empty">Enter your shared interests and we'll craft personalized date ideas just for you two.</div>
       </div>
 
       <div class="card" style="margin-top:14px;">
-        <div class="slabel">Time-zone harmony</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Six call windows tuned to your sleep patterns and time zones. The best moments to find each other this week.</p>
-        <button id="hm-btn" class="btn btn-primary btn-sm">Find our windows ✨</button>
+        <div class="slabel" data-i18n="plans_harmony_label">Time-zone harmony</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="plans_harmony_sub">Six call windows tuned to your sleep patterns and time zones. The best moments to find each other this week.</p>
+        <button id="hm-btn" class="btn btn-primary btn-sm" data-i18n="plans_harmony_btn">Find our windows ✨</button>
         <div id="hm-loading" class="loading-text" style="display:none;">
           <span class="ldot"></span><span class="ldot"></span><span class="ldot"></span>
-          Finding when you're both awake…
+          <span data-i18n="plans_harmony_loading">Finding when you're both awake…</span>
         </div>
         <div id="hm-out" class="hm-grid"></div>
       </div>
 
       <div class="card" style="margin-top:14px;">
-        <div class="slabel">Shared bucket list</div>
+        <div class="slabel" data-i18n="plans_bucket_label">Shared bucket list</div>
         <div class="input-row mb-14">
-          <input id="bk-inp" type="text" placeholder="A dream to do together...">
-          <button class="btn btn-secondary btn-sm" onclick="window.app.addBucket()">Add →</button>
+          <input id="bk-inp" type="text" data-i18n-placeholder="plans_bucket_ph" placeholder="A dream to do together...">
+          <button class="btn btn-secondary btn-sm" onclick="window.app.addBucket()" data-i18n="btn_add">Add →</button>
         </div>
         <div id="bk-list"></div>
-        <div id="bk-empty" class="empty-state center" style="display:none;">No items yet — start dreaming together</div>
+        <div id="bk-empty" class="empty-state center" style="display:none;" data-i18n="plans_bucket_empty">No items yet — start dreaming together</div>
       </div>
     </div>
 
@@ -374,91 +376,91 @@
       <div class="card wrap-cta mb-20">
         <div class="wrap-cta-emoji">✨</div>
         <div class="wrap-cta-text">
-          <div class="slabel">Your year together, in six moments</div>
-          <p class="ob-sub" style="margin:6px 0 12px;">A beautiful recap of everything you've shared this year. Tap to reveal.</p>
-          <button id="wrap-btn" class="btn btn-primary btn-sm">Open our Wrapped ✨</button>
+          <div class="slabel" data-i18n="story_wrapped_label">Your year together, in six moments</div>
+          <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="story_wrapped_sub">A beautiful recap of everything you've shared this year. Tap to reveal.</p>
+          <button id="wrap-btn" class="btn btn-primary btn-sm" data-i18n="story_wrapped_btn">Open our Wrapped ✨</button>
         </div>
       </div>
 
       <div class="card mb-20">
-        <div class="slabel">Add a milestone</div>
+        <div class="slabel" data-i18n="story_milestone_label">Add a milestone</div>
         <div class="grid-2 mb-12">
-          <div class="field"><label>Date</label><input id="ms-date" type="date"></div>
-          <div class="field"><label>Title</label><input id="ms-title" type="text" placeholder="Our first video call"></div>
+          <div class="field"><label data-i18n="story_milestone_date">Date</label><input id="ms-date" type="date"></div>
+          <div class="field"><label data-i18n="story_milestone_title">Title</label><input id="ms-title" type="text" data-i18n-placeholder="story_milestone_title_ph" placeholder="Our first video call"></div>
         </div>
-        <div class="field mb-14"><label>Memory (optional)</label>
-          <input id="ms-note" type="text" placeholder="A detail to hold onto..."></div>
-        <button class="btn btn-primary btn-full" onclick="window.app.addMilestone()">Add to our story →</button>
+        <div class="field mb-14"><label data-i18n="story_milestone_note">Memory (optional)</label>
+          <input id="ms-note" type="text" data-i18n-placeholder="story_milestone_note_ph" placeholder="A detail to hold onto..."></div>
+        <button class="btn btn-primary btn-full" onclick="window.app.addMilestone()" data-i18n="story_milestone_add">Add to our story →</button>
       </div>
       <div id="ms-timeline"></div>
-      <div id="ms-empty" class="empty-state center" style="display:none;">Your story is just beginning</div>
+      <div id="ms-empty" class="empty-state center" style="display:none;" data-i18n="story_empty">Your story is just beginning</div>
 
       <div class="card mt-14">
         <div class="dq-header">
-          <div class="slabel">Photo album</div>
-          <button id="album-refresh" class="btn btn-ghost btn-sm" type="button">Refresh</button>
+          <div class="slabel" data-i18n="story_album_label">Photo album</div>
+          <button id="album-refresh" class="btn btn-ghost btn-sm" type="button" data-i18n="btn_refresh">Refresh</button>
         </div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Every photo you've shared in chat, gathered into one place.</p>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="story_album_sub">Every photo you've shared in chat, gathered into one place.</p>
         <div id="album-grid" class="album-grid"></div>
       </div>
 
       <div class="card mt-14">
-        <div class="slabel">Future letters</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Write a letter today, sealed until a date you pick. Open it together when the time comes.</p>
+        <div class="slabel" data-i18n="story_letters_label">Future letters</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="story_letters_sub">Write a letter today, sealed until a date you pick. Open it together when the time comes.</p>
         <div class="grid-2 mb-12">
-          <div class="field"><label>Title (optional)</label><input id="lt-title" type="text" placeholder="A letter for our anniversary"></div>
-          <div class="field"><label>Unlock on</label><input id="lt-unlock" type="date"></div>
+          <div class="field"><label data-i18n="story_letters_title_label">Title (optional)</label><input id="lt-title" type="text" data-i18n-placeholder="story_letters_title_ph" placeholder="A letter for our anniversary"></div>
+          <div class="field"><label data-i18n="story_letters_unlock_label">Unlock on</label><input id="lt-unlock" type="date"></div>
         </div>
         <div class="field mb-12">
-          <label>Recipient</label>
+          <label data-i18n="story_letters_recipient">Recipient</label>
           <select id="lt-recipient">
-            <option value="us">For both of us</option>
-            <option value="partner">For my partner only</option>
-            <option value="self">For myself only</option>
+            <option value="us"      data-i18n="story_letters_recipient_us">For both of us</option>
+            <option value="partner" data-i18n="story_letters_recipient_partner">For my partner only</option>
+            <option value="self"    data-i18n="story_letters_recipient_self">For myself only</option>
           </select>
         </div>
-        <textarea id="lt-body" placeholder="Write your letter…" style="min-height:120px;"></textarea>
+        <textarea id="lt-body" data-i18n-placeholder="story_letters_body_ph" placeholder="Write your letter…" style="min-height:120px;"></textarea>
         <div style="text-align:right;margin-top:10px;">
-          <button id="lt-save" class="btn btn-primary btn-sm">Seal letter ✉️</button>
+          <button id="lt-save" class="btn btn-primary btn-sm" data-i18n="story_letters_seal">Seal letter ✉️</button>
         </div>
         <div id="lt-list" class="lt-list" style="margin-top:18px;"></div>
       </div>
 
       <div class="card mt-14">
-        <div class="slabel">Memory book</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Reads your notes, moods, milestones and watch nights, and writes a chapter of your story.</p>
+        <div class="slabel" data-i18n="story_memory_label">Memory book</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="story_memory_sub">Reads your notes, moods, milestones and watch nights, and writes a chapter of your story.</p>
         <div class="memory-controls">
-          <button class="btn btn-primary  btn-sm" data-memory-period="week">This week</button>
-          <button class="btn btn-secondary btn-sm" data-memory-period="month">This month</button>
-          <button class="btn btn-secondary btn-sm" data-memory-period="year">This year</button>
+          <button class="btn btn-primary  btn-sm" data-memory-period="week"  data-i18n="story_memory_week">This week</button>
+          <button class="btn btn-secondary btn-sm" data-memory-period="month" data-i18n="story_memory_month">This month</button>
+          <button class="btn btn-secondary btn-sm" data-memory-period="year"  data-i18n="story_memory_year">This year</button>
         </div>
         <div id="memory-loading" class="loading-text" style="display:none;">
           <span class="ldot"></span><span class="ldot"></span><span class="ldot"></span>
-          Reading your story…
+          <span data-i18n="story_memory_loading">Reading your story…</span>
         </div>
         <div id="memory-out"></div>
         <div id="memory-list" class="memory-list"></div>
-        <div id="memory-empty" class="empty-state center" style="display:none;">No chapters yet — write your first.</div>
+        <div id="memory-empty" class="empty-state center" style="display:none;" data-i18n="story_memory_empty">No chapters yet — write your first.</div>
       </div>
     </div>
 
     <!-- WATCH -->
     <div id="tab-watch" class="tab-panel" style="display:none;">
       <div class="watch-toolbar">
-        <span id="watch-presence" class="presence-pill away">Partner is away</span>
-        <button id="watch-theater" class="btn btn-ghost btn-sm" title="Theater mode">◐ Theater</button>
+        <span id="watch-presence" class="presence-pill away" data-i18n="watch_partner_away">Partner is away</span>
+        <button id="watch-theater" class="btn btn-ghost btn-sm" title="Theater mode" data-i18n="watch_theater">◐ Theater</button>
       </div>
 
       <div class="card watch-card">
         <div class="input-row mb-14">
-          <input id="watch-inp" type="text" placeholder="Paste a YouTube link or .mp4 URL…">
-          <button id="watch-load"      class="btn btn-primary  btn-sm">Load now</button>
-          <button id="watch-queue-btn" class="btn btn-secondary btn-sm">+ Queue</button>
+          <input id="watch-inp" type="text" data-i18n-placeholder="watch_inp_ph" placeholder="Paste a YouTube link or .mp4 URL…">
+          <button id="watch-load"      class="btn btn-primary  btn-sm" data-i18n="watch_load_now">Load now</button>
+          <button id="watch-queue-btn" class="btn btn-secondary btn-sm" data-i18n="watch_queue_btn">+ Queue</button>
         </div>
 
         <div class="watch-stage">
           <div id="watch-player" class="watch-player">
-            <div class="watch-empty">Paste a YouTube link or .mp4 URL above and hit Load.</div>
+            <div class="watch-empty" data-i18n="watch_player_empty">Paste a YouTube link or .mp4 URL above and hit Load.</div>
           </div>
           <div id="watch-reactions" class="watch-reactions"></div>
           <div id="watch-chatlayer" class="watch-chatlayer"></div>
@@ -470,27 +472,27 @@
               <button class="rxn-btn" data-reaction="😱" title="Shocked">😱</button>
               <button class="rxn-btn" data-reaction="✨" title="Magic">✨</button>
             </div>
-            <button id="watch-moment" class="btn btn-secondary btn-sm" title="Save this moment to your Story">💫 Save moment</button>
+            <button id="watch-moment" class="btn btn-secondary btn-sm" title="Save this moment to your Story" data-i18n="watch_save_moment">💫 Save moment</button>
           </div>
           <div class="watch-chatmini-row">
             <div id="typing-indicator" class="typing-indicator"></div>
-            <input id="watch-chatmini" type="text" placeholder="Whisper while you watch…">
+            <input id="watch-chatmini" type="text" data-i18n-placeholder="watch_chatmini_ph" placeholder="Whisper while you watch…">
           </div>
         </div>
 
         <div class="queue-block">
-          <div class="slabel">Up next</div>
+          <div class="slabel" data-i18n="watch_up_next">Up next</div>
           <div id="watch-queue"></div>
         </div>
       </div>
 
       <div class="card mt-14">
-        <div class="slabel">Date-night picker</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Six watch ideas tuned to you two — tap to find on YouTube.</p>
-        <button id="watch-sugg-btn" class="btn btn-primary btn-sm">Suggest tonight ✨</button>
+        <div class="slabel" data-i18n="watch_picker_label">Date-night picker</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="watch_picker_sub">Six watch ideas tuned to you two — tap to find on YouTube.</p>
+        <button id="watch-sugg-btn" class="btn btn-primary btn-sm" data-i18n="watch_picker_btn">Suggest tonight ✨</button>
         <div id="watch-sugg-loading" class="loading-text" style="display:none;">
           <span class="ldot"></span><span class="ldot"></span><span class="ldot"></span>
-          Curating ideas just for you two…
+          <span data-i18n="watch_picker_loading">Curating ideas just for you two…</span>
         </div>
         <div id="watch-suggestions" class="sugg-grid"></div>
       </div>
@@ -500,64 +502,64 @@
     <div id="tab-together" class="tab-panel" style="display:none;">
       <div class="chat-info">
         <span class="live-dot" style="background:var(--secondary);"></span>
-        Live presence — draw together, tap the same spot to kiss across miles, send a care package.
+        <span data-i18n="together_info">Live presence — draw together, tap the same spot to kiss across miles, send a care package.</span>
       </div>
 
       <div class="card together-card">
-        <div class="slabel">Shared canvas</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Doodle in real time. Tap the same spot at the same time — your fingers will meet 💖.</p>
+        <div class="slabel" data-i18n="together_canvas_label">Shared canvas</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="together_canvas_sub">Doodle in real time. Tap the same spot at the same time — your fingers will meet 💖.</p>
         <div class="together-stage">
           <canvas id="together-canvas"></canvas>
           <div id="together-fx"   class="together-fx"></div>
         </div>
         <div class="together-actions">
-          <button id="mg-start"     class="btn btn-secondary btn-sm">🎲 New drawing prompt</button>
-          <button id="canvas-clear" class="btn btn-ghost btn-sm">Clear canvas</button>
+          <button id="mg-start"     class="btn btn-secondary btn-sm" data-i18n="together_canvas_prompt">🎲 New drawing prompt</button>
+          <button id="canvas-clear" class="btn btn-ghost btn-sm" data-i18n="together_canvas_clear">Clear canvas</button>
         </div>
         <div id="mg-prompt" class="mg-prompt hidden"></div>
       </div>
 
       <div class="card mt-14">
-        <div class="slabel">Care packages</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">A tap to remind them you're thinking of them — pops up on their screen instantly.</p>
+        <div class="slabel" data-i18n="together_care_label">Care packages</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="together_care_sub">A tap to remind them you're thinking of them — pops up on their screen instantly.</p>
         <div id="care-row" class="care-row"></div>
       </div>
 
       <div class="card mt-14">
-        <div class="slabel">Heartbeat sync</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Press your fingertip over your phone's camera (works best with flash on). Or tap to your pulse. We'll sync your heartbeats across the miles.</p>
+        <div class="slabel" data-i18n="together_heartbeat_label">Heartbeat sync</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="together_heartbeat_sub">Press your fingertip over your phone's camera. Or tap to your pulse. We'll sync your heartbeats across the miles.</p>
         <div id="hb-wrap" class="hb-wrap" data-mode="idle">
           <div class="hb-pair">
             <div class="hb-pane">
               <div id="hb-mine" class="hb-circle mine"><span>💗</span></div>
-              <div class="hb-name">You</div>
+              <div class="hb-name" data-i18n="together_hb_you">You</div>
               <div id="hb-mine-bpm" class="hb-bpm">— BPM</div>
             </div>
             <div class="hb-link"></div>
             <div class="hb-pane">
               <div id="hb-theirs" class="hb-circle theirs"><span>💗</span></div>
-              <div class="hb-name" id="hb-theirs-name">Partner</div>
+              <div class="hb-name" id="hb-theirs-name" data-i18n="together_hb_partner">Partner</div>
               <div id="hb-theirs-bpm" class="hb-bpm">— BPM</div>
             </div>
           </div>
           <div id="hb-status" class="hb-status"></div>
           <div class="hb-actions">
-            <button id="hb-start-ppg" class="btn btn-primary  btn-sm">📷 Camera mode</button>
-            <button id="hb-start-tap" class="btn btn-secondary btn-sm">👆 Tap mode</button>
-            <button id="hb-tap" class="btn btn-secondary btn-sm" style="display:none;">Tap ❤</button>
-            <button id="hb-stop" class="btn btn-ghost btn-sm" style="display:none;">Stop</button>
+            <button id="hb-start-ppg" class="btn btn-primary  btn-sm" data-i18n="together_hb_camera">📷 Camera mode</button>
+            <button id="hb-start-tap" class="btn btn-secondary btn-sm" data-i18n="together_hb_tap">👆 Tap mode</button>
+            <button id="hb-tap" class="btn btn-secondary btn-sm" style="display:none;" data-i18n="together_hb_tap_btn">Tap ❤</button>
+            <button id="hb-stop" class="btn btn-ghost btn-sm" style="display:none;" data-i18n="together_hb_stop">Stop</button>
           </div>
         </div>
       </div>
 
       <div class="card mt-14">
-        <div class="slabel">Audio postcards</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Record up to 30 seconds of where you are right now — coffee shop, evening street, your room. Send the sound of your day.</p>
+        <div class="slabel" data-i18n="together_audio_label">Audio postcards</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="together_audio_sub">Record up to 30 seconds of where you are right now — coffee shop, evening street, your room. Send the sound of your day.</p>
         <div class="sc-recorder">
-          <input id="sc-label" type="text" placeholder="Optional label — e.g. 'rain on my window'" />
+          <input id="sc-label" type="text" data-i18n-placeholder="together_audio_label_ph" placeholder="Optional label — e.g. 'rain on my window'" />
           <span id="sc-timer" class="rec-timer" style="display:none;">00:00</span>
-          <button id="sc-start" class="btn btn-primary btn-sm">🎙 Record postcard</button>
-          <button id="sc-stop"  class="btn btn-secondary btn-sm" style="display:none;">⏹ Send</button>
+          <button id="sc-start" class="btn btn-primary btn-sm" data-i18n="together_audio_btn">🎙 Record postcard</button>
+          <button id="sc-stop"  class="btn btn-secondary btn-sm" style="display:none;" data-i18n="together_audio_send">⏹ Send</button>
         </div>
         <div id="sc-list" class="sc-list"></div>
       </div>
@@ -567,33 +569,33 @@
     <div id="tab-rituals" class="tab-panel" style="display:none;">
       <div class="card">
         <div class="dq-header">
-          <div class="slabel">Deep question <span id="dq-category" class="dq-category"></span></div>
-          <button id="dq-next" class="btn btn-secondary btn-sm" style="display:none;">Next question →</button>
+          <div class="slabel"><span data-i18n="rituals_dq_label">Deep question</span> <span id="dq-category" class="dq-category"></span></div>
+          <button id="dq-next" class="btn btn-secondary btn-sm" style="display:none;" data-i18n="rituals_dq_next">Next question →</button>
         </div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Tuned for you — vulnerability, future-self, micro-detail and more. Ask as many as you want. Both answer in private, then reveal.</p>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="rituals_dq_sub">Tuned for you — vulnerability, future-self, micro-detail and more. Ask as many as you want. Both answer in private, then reveal.</p>
 
         <div class="dq-controls">
           <div class="dq-depth-wrap">
-            <span class="dq-ctrl-label">Depth</span>
+            <span class="dq-ctrl-label" data-i18n="rituals_dq_depth">Depth</span>
             <div id="dq-depth" class="dq-depth">
-              <button data-depth="light"  type="button">Light</button>
-              <button data-depth="medium" type="button">Medium</button>
-              <button data-depth="deep"   type="button">Deep</button>
+              <button data-depth="light"  type="button" data-i18n="rituals_dq_depth_light">Light</button>
+              <button data-depth="medium" type="button" data-i18n="rituals_dq_depth_medium">Medium</button>
+              <button data-depth="deep"   type="button" data-i18n="rituals_dq_depth_deep">Deep</button>
             </div>
           </div>
           <div class="dq-theme-wrap">
-            <span class="dq-ctrl-label">Theme</span>
+            <span class="dq-ctrl-label" data-i18n="rituals_dq_theme">Theme</span>
             <select id="dq-theme" class="dq-theme"></select>
           </div>
         </div>
 
         <div id="dq-question" class="dq-question">…</div>
 
-        <textarea id="dq-my-answer" placeholder="Type your answer — and / or add a voice note below. Use either, or both."></textarea>
+        <textarea id="dq-my-answer" data-i18n-placeholder="rituals_dq_my_ph" placeholder="Type your answer — and / or add a voice note below. Use either, or both."></textarea>
         <audio id="dq-my-audio" class="dq-my-audio" controls preload="none" style="display:none;"></audio>
 
         <div id="rec-wrap" class="rec-wrap" data-state="idle">
-          <button id="rec-start"   class="btn btn-secondary btn-sm" type="button">🎙 Add voice note</button>
+          <button id="rec-start"   class="btn btn-secondary btn-sm" type="button" data-i18n="rituals_dq_record">🎙 Add voice note</button>
           <button id="rec-stop"    class="btn btn-primary  btn-sm"  type="button" style="display:none;">⏹ Stop</button>
           <span   id="rec-timer"   class="rec-timer"  style="display:none;">00:00</span>
           <audio  id="rec-preview" class="rec-preview" controls style="display:none;"></audio>
@@ -602,60 +604,60 @@
 
         <div class="dq-row">
           <span id="dq-status" class="dq-status"></span>
-          <button id="dq-submit" class="btn btn-primary btn-sm">Lock in answer</button>
+          <button id="dq-submit" class="btn btn-primary btn-sm" data-i18n="rituals_dq_lockin">Lock in answer</button>
         </div>
         <div class="dq-reveal">
-          <div class="dq-reveal-label" id="dq-partner-label">Their answer</div>
+          <div class="dq-reveal-label" id="dq-partner-label" data-i18n="rituals_dq_partner">Their answer</div>
           <div id="dq-partner-answer" class="dq-reveal-text"></div>
           <audio id="dq-partner-audio" class="dq-partner-audio" controls preload="none" style="display:none;"></audio>
         </div>
       </div>
 
       <div class="card mt-14">
-        <div class="slabel">Past questions</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Your relationship's archive — the things you've told each other.</p>
+        <div class="slabel" data-i18n="rituals_dq_history_label">Past questions</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="rituals_dq_history_sub">Your relationship's archive — the things you've told each other.</p>
         <div id="dq-history" class="dq-history"></div>
       </div>
 
       <div class="card mt-14">
-        <div class="slabel">Sleep together</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Say goodnight when you're heading to bed. We'll let them know — and notice who wakes first.</p>
+        <div class="slabel" data-i18n="rituals_sleep_label">Sleep together</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="rituals_sleep_sub">Say goodnight when you're heading to bed. We'll let them know — and notice who wakes first.</p>
         <div class="sleep-grid">
           <div>
-            <div class="field-label">You</div>
+            <div class="field-label" data-i18n="together_hb_you">You</div>
             <div id="sleep-my" class="sleep-line">Not yet tonight</div>
           </div>
           <div>
-            <div class="field-label" id="sleep-their-lbl">Them</div>
+            <div class="field-label" id="sleep-their-lbl" data-i18n="together_hb_partner">Them</div>
             <div id="sleep-their" class="sleep-line">Not yet</div>
           </div>
         </div>
         <div id="sleep-status" class="sleep-status"></div>
         <div class="sleep-actions">
-          <button id="sleep-goodnight" class="btn btn-secondary btn-sm">💤 Goodnight</button>
-          <button id="sleep-wakeup"    class="btn btn-secondary btn-sm">☀️ I'm awake</button>
+          <button id="sleep-goodnight" class="btn btn-secondary btn-sm" data-i18n="rituals_sleep_goodnight">💤 Goodnight</button>
+          <button id="sleep-wakeup"    class="btn btn-secondary btn-sm" data-i18n="rituals_sleep_wakeup">☀️ I'm awake</button>
         </div>
       </div>
 
       <div class="card mt-14">
-        <div class="slabel">Dream journal</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Log what your sleeping mind brought you. Over time, we'll find the themes you both share.</p>
-        <textarea id="dr-content" placeholder="Last night I dreamed…" style="min-height:90px;margin-bottom:8px;"></textarea>
+        <div class="slabel" data-i18n="rituals_dreams_label">Dream journal</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="rituals_dreams_sub">Log what your sleeping mind brought you. Over time, we'll find the themes you both share.</p>
+        <textarea id="dr-content" data-i18n-placeholder="rituals_dreams_ph" placeholder="Last night I dreamed…" style="min-height:90px;margin-bottom:8px;"></textarea>
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;">
-          <button id="dr-themes-btn" class="btn btn-secondary btn-sm">Find shared themes 🌙</button>
-          <button id="dr-save" class="btn btn-primary btn-sm">Log dream</button>
+          <button id="dr-themes-btn" class="btn btn-secondary btn-sm" data-i18n="rituals_dreams_themes">Find shared themes 🌙</button>
+          <button id="dr-save" class="btn btn-primary btn-sm" data-i18n="rituals_dreams_log">Log dream</button>
         </div>
         <div id="dr-themes-loading" class="loading-text" style="display:none;margin-top:10px;">
           <span class="ldot"></span><span class="ldot"></span><span class="ldot"></span>
-          Reading your dreams…
+          <span data-i18n="rituals_dreams_loading">Reading your dreams…</span>
         </div>
         <div id="dr-themes" class="dr-themes" style="margin-top:12px;"></div>
         <div id="dr-list" class="dr-list" style="margin-top:14px;"></div>
       </div>
 
       <div class="card mt-14">
-        <div class="slabel">Streaks</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Small daily acts compound — keep them alive.</p>
+        <div class="slabel" data-i18n="rituals_streaks_label">Streaks</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="rituals_streaks_sub">Small daily acts compound — keep them alive.</p>
         <div id="streaks-wrap" class="streaks-wrap"></div>
       </div>
     </div>
@@ -664,91 +666,103 @@
     <div id="tab-life" class="tab-panel" style="display:none;">
 
       <div class="card">
-        <div class="slabel">Shared calendar</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Visits, calls, weddings, deadlines — every event shown in both your timezones.</p>
+        <div class="slabel" data-i18n="life_cal_label">Shared calendar</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="life_cal_sub">Visits, calls, weddings, deadlines — every event shown in both your timezones.</p>
         <div class="grid-2 mb-12">
-          <div class="field"><label>Title</label><input id="cal-title" type="text" placeholder="Aino's flight to Seoul"></div>
-          <div class="field"><label>When</label><input id="cal-when" type="datetime-local"></div>
+          <div class="field"><label data-i18n="life_cal_title">Title</label><input id="cal-title" type="text" data-i18n-placeholder="life_cal_title_ph" placeholder="Aino's flight to Seoul"></div>
+          <div class="field"><label data-i18n="life_cal_when">When</label><input id="cal-when" type="datetime-local"></div>
         </div>
         <div class="grid-2 mb-12">
-          <div class="field"><label>Duration (min)</label><input id="cal-dur" type="number" value="60" min="5"></div>
-          <div class="field"><label>Kind</label>
+          <div class="field"><label data-i18n="life_cal_dur">Duration (min)</label><input id="cal-dur" type="number" value="60" min="5"></div>
+          <div class="field"><label data-i18n="life_cal_kind">Kind</label>
             <select id="cal-kind">
-              <option value="call">Call</option>
-              <option value="visit">Visit</option>
-              <option value="celebration">Celebration</option>
-              <option value="deadline">Deadline</option>
-              <option value="other">Other</option>
+              <option value="call"        data-i18n="life_cal_kind_call">Call</option>
+              <option value="visit"       data-i18n="life_cal_kind_visit">Visit</option>
+              <option value="celebration" data-i18n="life_cal_kind_celebration">Celebration</option>
+              <option value="deadline"    data-i18n="life_cal_kind_deadline">Deadline</option>
+              <option value="other"       data-i18n="life_cal_kind_other">Other</option>
             </select>
           </div>
         </div>
-        <div style="text-align:right;"><button id="cal-add" class="btn btn-primary btn-sm">Add to calendar</button></div>
+        <div class="grid-2 mb-12">
+          <div class="field"><label data-i18n="life_cal_repeat">Repeat</label>
+            <select id="cal-recurrence">
+              <option value="none">No repeat</option>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Every 2 weeks</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+          <div></div>
+        </div>
+        <div style="text-align:right;"><button id="cal-add" class="btn btn-primary btn-sm" data-i18n="life_cal_add">Add to calendar</button></div>
         <div id="cal-list" class="cal-list" style="margin-top:14px;"></div>
       </div>
 
       <div class="card mt-14">
-        <div class="slabel">Shared expenses</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Track flights, gifts, rebookings — settle up quarterly.</p>
-        <div id="exp-balance" class="exp-balance">No unsettled expenses</div>
+        <div class="slabel" data-i18n="life_exp_label">Shared expenses</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="life_exp_sub">Track flights, gifts, rebookings — settle up quarterly.</p>
+        <div id="exp-balance" class="exp-balance" data-i18n="life_exp_balance_none">No unsettled expenses</div>
         <div class="grid-2 mb-12">
-          <div class="field"><label>What</label><input id="exp-note" type="text" placeholder="Round-trip Helsinki → Seoul"></div>
-          <div class="field"><label>Amount</label><input id="exp-amount" type="number" step="0.01" placeholder="850"></div>
+          <div class="field"><label data-i18n="life_exp_what">What</label><input id="exp-note" type="text" data-i18n-placeholder="life_exp_what_ph" placeholder="Round-trip Helsinki → Seoul"></div>
+          <div class="field"><label data-i18n="life_exp_amount">Amount</label><input id="exp-amount" type="number" step="0.01" placeholder="850"></div>
         </div>
         <div class="grid-2 mb-12">
-          <div class="field"><label>Currency</label>
+          <div class="field"><label data-i18n="life_exp_currency">Currency</label>
             <select id="exp-cur">
               <option>USD</option><option>EUR</option><option>GBP</option><option>KRW</option><option>JPY</option><option>NGN</option><option>CAD</option><option>AUD</option>
             </select>
           </div>
-          <div class="field"><label>Category</label>
+          <div class="field"><label data-i18n="life_exp_category">Category</label>
             <select id="exp-cat">
               <option>flight</option><option>hotel</option><option>gift</option><option>food</option><option>transport</option><option>other</option>
             </select>
           </div>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
-          <button id="exp-settle" class="btn btn-secondary btn-sm">Settle all ✓</button>
-          <button id="exp-add"    class="btn btn-primary   btn-sm">Add expense</button>
+          <button id="exp-settle" class="btn btn-secondary btn-sm" data-i18n="life_exp_settle">Settle all ✓</button>
+          <button id="exp-add"    class="btn btn-primary   btn-sm" data-i18n="life_exp_add">Add expense</button>
         </div>
         <div id="exp-list" class="exp-list" style="margin-top:14px;"></div>
       </div>
 
       <div class="card mt-14">
-        <div class="slabel">Paperwork & visas</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Track applications, deadlines, and country-specific docs. Don't let bureaucracy steal your time together.</p>
+        <div class="slabel" data-i18n="life_visa_label">Paperwork & visas</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="life_visa_sub">Track applications, deadlines, and country-specific docs. Don't let bureaucracy steal your time together.</p>
         <div class="grid-2 mb-12">
-          <div class="field"><label>Title</label><input id="vi-title" type="text" placeholder="Spouse visa application"></div>
-          <div class="field"><label>Kind</label>
+          <div class="field"><label data-i18n="life_cal_title">Title</label><input id="vi-title" type="text" data-i18n-placeholder="life_visa_title_ph" placeholder="Spouse visa application"></div>
+          <div class="field"><label data-i18n="life_visa_kind">Kind</label>
             <select id="vi-kind">
               <option>visa</option><option>passport</option><option>permit</option><option>certificate</option><option>appointment</option><option>document</option><option>other</option>
             </select>
           </div>
         </div>
         <div class="grid-2 mb-12">
-          <div class="field"><label>Country</label><input id="vi-country" type="text" placeholder="Finland"></div>
-          <div class="field"><label>Due</label><input id="vi-due" type="date"></div>
+          <div class="field"><label data-i18n="life_visa_country">Country</label><input id="vi-country" type="text" placeholder="Finland"></div>
+          <div class="field"><label data-i18n="life_visa_due">Due</label><input id="vi-due" type="date"></div>
         </div>
         <div class="grid-2 mb-12">
-          <div class="field"><label>For</label>
+          <div class="field"><label data-i18n="life_visa_for">For</label>
             <select id="vi-for">
-              <option value="0">Both / either</option>
+              <option value="0" data-i18n="life_visa_for_both">Both / either</option>
               <option value="1" id="vi-for-1">Partner 1</option>
               <option value="2" id="vi-for-2">Partner 2</option>
             </select>
           </div>
           <div></div>
         </div>
-        <div style="text-align:right;"><button id="vi-add" class="btn btn-primary btn-sm">Track item</button></div>
+        <div style="text-align:right;"><button id="vi-add" class="btn btn-primary btn-sm" data-i18n="life_visa_add">Track item</button></div>
         <div id="vi-list" class="vi-list" style="margin-top:14px;"></div>
       </div>
 
       <div class="card mt-14">
-        <div class="slabel">Care from afar</div>
-        <p class="ob-sub" style="margin:6px 0 12px;">Tap a button to let your partner know what's happening. Distance shouldn't mean facing it alone.</p>
+        <div class="slabel" data-i18n="life_care_label">Care from afar</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="life_care_sub">Tap a button to let your partner know what's happening. Distance shouldn't mean facing it alone.</p>
         <div id="care-buttons" class="care-buttons-row"></div>
         <div id="care-list" class="care-list" style="margin-top:14px;"></div>
         <div class="care-launch-row">
-          <button id="lc-launch" class="btn btn-primary btn-sm" type="button">🎁 Send food, flowers or a gift to their city</button>
+          <button id="lc-launch" class="btn btn-primary btn-sm" type="button" data-i18n="life_care_send">🎁 Send food, flowers or a gift to their city</button>
         </div>
       </div>
 
