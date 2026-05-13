@@ -35,7 +35,8 @@ import { initErrorMonitor } from './errors.js'
 import { initAlbum, teardownAlbum, onRemoteAlbumUpdate } from './album.js'
 import { initDarkToggle, exportThisRoom, shareRoom } from './preferences.js'
 import { initStats, refreshStats, teardownStats } from './stats.js'
-import { Analytics } from '@vercel/analytics/next';
+import { inject as injectVercelAnalytics } from '@vercel/analytics'
+injectVercelAnalytics()
 
 
 // ============================================================
@@ -1011,13 +1012,3 @@ init().catch((e) => {
   }
 })
 
-function MyApp({ Component, pageProps }) {
-  return (
-    <>
-    <Component {...pageProps} />
-    <Analytics />
-    </>
-  );
-}
-
-export default MyApp
