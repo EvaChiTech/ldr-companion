@@ -1,46 +1,43 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import {
+  preflight, requirePost, checkBodySize,
+  requireUser, rateLimit, corsHeaders, json, clip,
+} from '../_shared/guard.ts'
+import { callAI, stripFence } from '../_shared/ai.ts'
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
-  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: CORS })
+  const pf = preflight(req); if (pf) return pf
+  const mn = requirePost(req); if (mn) return mn
+  const bs = checkBodySize(req, 65536); if (bs) return bs
 
+  const user = await requireUser(req); if (user instanceof Response) return user
+  const rl = await rateLimit(req, 'memory-chapter', { user, maxPerUser: 6, maxPerIp: 30 })
+  if (rl) return rl
+
+  const CORS = corsHeaders(req)
   try {
-    const { n1, n2, period_start, period_end, notes, moods, milestones, watch_count, message_count, daily_answers, apiKey } = await req.json()
-    if (!n1 || !n2 || !period_start || !period_end) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
-        status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
-      })
-    }
-    const anthropicKey = apiKey || Deno.env.get('ANTHROPIC_API_KEY')
-    if (!anthropicKey) {
-      return new Response(JSON.stringify({ error: 'Anthropic API key not configured' }), {
-        status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
-      })
-    }
+    const body = await req.json()
+    const n1 = clip(body.n1, 60), n2 = clip(body.n2, 60)
+    const period_start = clip(body.period_start, 20)
+    const period_end   = clip(body.period_end, 20)
+    if (!n1 || !n2 || !period_start || !period_end) return json({ error: 'Missing required fields' }, 400, CORS)
 
     const summarize = (arr: any[], formatter: (x: any) => string, max = 30) =>
       Array.isArray(arr) ? arr.slice(0, max).map(formatter).join('\n') : ''
 
     const corpus = [
       `Daily notes the couple wrote each other:`,
-      summarize(notes || [], (n) => `- ${n.date} (${n.who}): ${n.content}`),
+      summarize(body.notes, (n: any) => `- ${clip(n.date, 20)} (${clip(n.who, 30)}): ${clip(n.content, 600)}`),
       ``,
       `Daily moods:`,
-      summarize(moods || [], (m) => `- ${m.date} (${m.who}): ${m.mood}`),
+      summarize(body.moods, (m: any) => `- ${clip(m.date, 20)} (${clip(m.who, 30)}): ${clip(m.mood, 60)}`),
       ``,
       `Milestones added in period:`,
-      summarize(milestones || [], (s) => `- ${s.date}: ${s.title}${s.note ? ' — ' + s.note : ''}`),
+      summarize(body.milestones, (s: any) => `- ${clip(s.date, 20)}: ${clip(s.title, 120)}${s.note ? ' — ' + clip(s.note, 200) : ''}`),
       ``,
       `Daily-question answers:`,
-      summarize(daily_answers || [], (q) => `- ${q.date}: Q: "${q.question}" | ${n1}: "${q.a1 || '—'}" | ${n2}: "${q.a2 || '—'}"`, 50),
+      summarize(body.daily_answers, (q: any) => `- ${clip(q.date, 20)}: Q: "${clip(q.question, 240)}" | ${n1}: "${clip(q.a1, 400) || '—'}" | ${n2}: "${clip(q.a2, 400) || '—'}"`, 50),
       ``,
-      `Quantitative: ${message_count ?? 'unknown'} messages exchanged, ${watch_count ?? 'unknown'} watch sessions.`,
+      `Quantitative: ${Number(body.message_count) || 'unknown'} messages exchanged, ${Number(body.watch_count) || 'unknown'} watch sessions.`,
     ].filter(Boolean).join('\n')
 
     const prompt = `You are writing a short, beautiful chapter of a couple's memory book for ${n1} and ${n2} (long-distance), covering ${period_start} to ${period_end}.
@@ -54,44 +51,11 @@ Write the chapter as warm second-person prose addressed to BOTH of them ("you tw
 
 Return ONLY JSON: {"title":"3-5 word evocative chapter title","content":"the chapter prose, 4-8 short paragraphs, no markdown headers"}`
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 2000,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '')
-      let msg = `Anthropic API error ${res.status}`
-      try { msg = JSON.parse(errText)?.error?.message || msg } catch {}
-      return new Response(JSON.stringify({ error: msg }), {
-        status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
-      })
-    }
-
-    const data = await res.json()
-    const raw = (data.content || [])
-      .filter((b: any) => b.type === 'text')
-      .map((b: any) => b.text)
-      .join('')
-    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
-
-    return new Response(JSON.stringify(parsed), {
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-    })
-  } catch (error) {
-    console.error('Error:', error)
-    return new Response(
-      JSON.stringify({ error: (error as any)?.message || 'Failed to generate chapter' }),
-      { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
-    )
+    const r = await callAI({ prompt, maxTokens: 2000, model: 'gpt-4o', json: true })
+    if (!r.ok) return json({ error: r.message }, r.status, CORS)
+    try { return json(JSON.parse(stripFence(r.text)), 200, CORS) }
+    catch { return json({ error: 'Bad AI response' }, 502, CORS) }
+  } catch (e) {
+    return json({ error: (e as any)?.message || 'Failed' }, 500, CORS)
   }
 })

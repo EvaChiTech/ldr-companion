@@ -6,29 +6,47 @@
 // ============================================================
 import { sb, configured } from './supabase.js'
 import { state, loadRoomsList, saveRoomsList, upsertRoomMembership, removeRoomMembership } from './state.js'
+import { runDataDeletion } from './legal.js'
+
+const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => (
+  { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]
+))
 
 let currentUser = null
 let authListeners = []
 let modal = null
 
 export function getUser() { return currentUser }
-export function isSignedIn() { return !!currentUser }
+// "Signed in" means a PERMANENT (email) identity — anonymous users have a
+// session too, but they aren't synced across devices.
+export function isSignedIn() { return !!currentUser && !currentUser.is_anonymous }
+// Any usable identity, anonymous or permanent. RLS needs this to be true.
+export function isAuthed() { return !!currentUser }
 export function onAuthChange(fn) { authListeners.push(fn); return () => { authListeners = authListeners.filter(x => x !== fn) } }
 
 function emitChange() { authListeners.forEach(fn => { try { fn(currentUser) } catch (e) { console.error(e) } }) }
 
-// ── Init: pick up existing session, subscribe to changes ──
+// ── Init: ensure an identity exists (anonymous if needed), subscribe ──
 export async function initAuth() {
   if (!configured || !sb) return
   try {
-    const { data: { session } } = await sb.auth.getSession()
+    let { data: { session } } = await sb.auth.getSession()
+    if (!session) {
+      // No session yet — create an invisible anonymous identity so every
+      // device has a real auth.uid() for row-level security. No login UI.
+      const { data, error } = await sb.auth.signInAnonymously()
+      if (error) console.error('[auth] anonymous sign-in failed', error)
+      session = data?.session || null
+    }
     currentUser = session?.user || null
     sb.auth.onAuthStateChange(async (_event, sess) => {
       const next = sess?.user || null
-      const wasSignedIn = !!currentUser
+      const wasPermanent = !!currentUser && !currentUser.is_anonymous
       currentUser = next
-      // On first sign-in, sync existing local rooms up to the server, then pull
-      if (currentUser && !wasSignedIn) {
+      const isPermanent = !!currentUser && !currentUser.is_anonymous
+      // When an anonymous identity is upgraded to a real email account,
+      // sync local rooms up, then pull anything stored server-side.
+      if (isPermanent && !wasPermanent) {
         await syncLocalToServer()
         await pullServerRooms()
       }
@@ -36,16 +54,26 @@ export async function initAuth() {
       updateBadgeUI()
     })
     updateBadgeUI()
-    // If already signed in on load, pull server-side rooms
-    if (currentUser) await pullServerRooms()
+    if (isSignedIn()) await pullServerRooms()
   } catch (e) {
     console.warn('[auth] init', e)
   }
 }
 
 // ── Sign-in via magic link ──
+// If the current identity is anonymous, UPGRADE it in place (updateUser)
+// so the user id — and therefore all room membership — survives. Otherwise
+// fall back to a fresh magic-link sign-in.
 export async function sendMagicLink(email) {
   if (!sb) throw new Error('Connection not configured')
+  if (currentUser && currentUser.is_anonymous) {
+    const { error } = await sb.auth.updateUser(
+      { email },
+      { emailRedirectTo: location.origin + location.pathname },
+    )
+    if (error) throw error
+    return
+  }
   const { error } = await sb.auth.signInWithOtp({
     email,
     options: { emailRedirectTo: location.origin + location.pathname },
@@ -56,7 +84,12 @@ export async function sendMagicLink(email) {
 export async function signOut() {
   if (!sb) return
   await sb.auth.signOut()
-  currentUser = null
+  // Re-establish a fresh anonymous identity so the app keeps functioning
+  // after logout (RLS still needs a valid auth.uid()).
+  try {
+    const { data } = await sb.auth.signInAnonymously()
+    currentUser = data?.session?.user || null
+  } catch { currentUser = null }
   emitChange()
   updateBadgeUI()
 }
@@ -130,9 +163,14 @@ function buildModal() {
         <div id="auth-user-line" class="auth-user-line"></div>
         <button id="auth-signout" class="btn btn-secondary btn-full" type="button">Sign out</button>
       </div>
+      <div class="auth-danger">
+        <a href="#" data-open-privacy class="auth-privacy-link">Privacy Policy</a>
+        <button id="auth-delete-data" class="auth-danger-btn" type="button">Delete all my data</button>
+      </div>
     </div>`
   document.body.appendChild(modal)
   modal.querySelector('.auth-close').onclick = closeModal
+  modal.querySelector('#auth-delete-data').onclick = () => runDataDeletion()
   modal.addEventListener('click', e => { if (e.target === modal) closeModal() })
   modal.querySelector('#auth-skip').onclick = closeModal
   modal.querySelector('#auth-send').onclick = async () => {
@@ -143,7 +181,7 @@ function buildModal() {
     btn.disabled = true; status.textContent = 'Sending…'
     try {
       await sendMagicLink(email)
-      status.innerHTML = `✓ Check <strong>${email}</strong>. Open the link on this device to finish signing in.`
+      status.innerHTML = `✓ Check <strong>${escapeHtml(email)}</strong>. Open the link on this device to finish signing in.`
     } catch (e) {
       status.textContent = 'Error: ' + (e.message || 'failed')
     } finally { btn.disabled = false }
@@ -160,10 +198,10 @@ function refreshModalState() {
   const signedInBlock = modal.querySelector('.auth-signed-in')
   const signInBlock   = modal.querySelector('.auth-body:not(.auth-signed-in)')
   const userLine      = modal.querySelector('#auth-user-line')
-  if (currentUser) {
+  if (isSignedIn()) {
     if (signInBlock)   signInBlock.style.display = 'none'
     if (signedInBlock) signedInBlock.style.display = ''
-    if (userLine) userLine.innerHTML = `Signed in as <strong>${currentUser.email || ''}</strong>. Your rooms sync across devices.`
+    if (userLine) userLine.innerHTML = `Signed in as <strong>${escapeHtml(currentUser.email || '')}</strong>. Your rooms sync across devices.`
   } else {
     if (signInBlock)   signInBlock.style.display = ''
     if (signedInBlock) signedInBlock.style.display = 'none'
@@ -176,9 +214,10 @@ function closeModal() { modal?.classList.add('hidden') }
 function updateBadgeUI() {
   const btn = document.getElementById('account-toggle')
   if (!btn) return
-  btn.textContent = currentUser ? '👤' : '🔓'
-  btn.title = currentUser ? `Signed in as ${currentUser.email}` : 'Sign in to sync rooms across devices'
-  btn.classList.toggle('signed-in', !!currentUser)
+  const permanent = isSignedIn()
+  btn.textContent = permanent ? '👤' : '🔓'
+  btn.title = permanent ? `Signed in as ${currentUser.email}` : 'Sign in to sync rooms across devices'
+  btn.classList.toggle('signed-in', permanent)
   if (modal) refreshModalState()
 }
 

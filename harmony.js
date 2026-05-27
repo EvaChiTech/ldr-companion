@@ -34,14 +34,12 @@ async function generateHarmony() {
 
   try {
     const sleepEvents = await fetchSleepHistory()
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
     const weekStart = new Date().toISOString().split('T')[0]
     const { data, error } = await sb.functions.invoke('harmony', {
       body: {
         n1: state.cfg.n1, n2: state.cfg.n2,
         tz1: state.cfg.tz1, tz2: state.cfg.tz2,
         sleepEvents, weekStart,
-        apiKey,
       },
     })
     lo.style.display = 'none'

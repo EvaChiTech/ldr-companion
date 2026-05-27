@@ -35,21 +35,26 @@
 
 **CRITICAL:** This step must be done before deployment!
 
-Click **"Environment Variables"** and add these three variables:
+Click **"Environment Variables"** and add these two variables (use your own
+project's values — never commit real values into this file):
 
 ```
-VITE_SUPABASE_URL = https://vkegcelyorjevpwoeigf.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY = sb_publishable_WRK0sMLc1huujljLPrS4Pg_UZ0Y2muk
-VITE_ANTHROPIC_API_KEY = YOUR_REAL_ANTHROPIC_API_KEY_HERE
+VITE_SUPABASE_URL = https://YOUR_PROJECT_ID.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY = sb_publishable_YOUR_KEY
 ```
 
-⚠️ **Important:**
-- Replace `YOUR_REAL_ANTHROPIC_API_KEY_HERE` with your actual Claude API key from [console.anthropic.com](https://console.anthropic.com)
-- If you don't have an Anthropic API key yet:
-  1. Visit https://console.anthropic.com
-  2. Sign up or log in
-  3. Create an API key
-  4. Come back and paste it here
+⚠️ **The Anthropic API key is NOT a Vercel variable.**
+A `VITE_`-prefixed key is bundled into the public client JS and would be
+readable by anyone who visits the site. The key lives only as a Supabase
+Edge Function secret:
+
+```
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+```
+
+Get a key at [console.anthropic.com](https://console.anthropic.com) if you
+don't have one. Also set, on the same Supabase secrets, an `ALLOWED_ORIGINS`
+value (comma-separated list of your deployed origins) to lock down CORS.
 
 ### Step 5: Deploy
 
@@ -72,7 +77,7 @@ VITE_ANTHROPIC_API_KEY = YOUR_REAL_ANTHROPIC_API_KEY_HERE
 ## 🔧 Common Issues & Fixes
 
 ### Issue: "Missing environment variables"
-**Fix:** Go to **"Settings"** → **"Environment Variables"** in Vercel and ensure all three `VITE_*` variables are set.
+**Fix:** Go to **"Settings"** → **"Environment Variables"** in Vercel and ensure both `VITE_*` variables are set.
 
 ### Issue: "Styling looks broken"
 **Fix:** This is usually a browser cache issue. Press `Ctrl+Shift+R` (hard refresh) or clear browser cache.
@@ -85,9 +90,9 @@ VITE_ANTHROPIC_API_KEY = YOUR_REAL_ANTHROPIC_API_KEY_HERE
 
 ### Issue: "AI date ideas not working"
 **Fix:** 
-1. Verify `VITE_ANTHROPIC_API_KEY` is set in Vercel
+1. Verify the `ANTHROPIC_API_KEY` secret is set on your Supabase Edge Functions (`supabase secrets list`)
 2. Ensure your Anthropic account has credits/quota
-3. Check the browser console (F12) for error messages
+3. Check the browser console (F12) and the Supabase Edge Function logs for errors
 
 ## 📝 Next Steps
 

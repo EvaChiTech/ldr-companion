@@ -1,10 +1,8 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import {
+  preflight, requirePost, checkBodySize,
+  requireUser, rateLimit, corsHeaders, json, clip,
+} from '../_shared/guard.ts'
+import { callAI, stripFence } from '../_shared/ai.ts'
 
 const DEPTH_GUIDE: Record<string, string> = {
   light:  `Pick from: Playful what-if, Joy & lightness, Micro-detail (about partner), Gratitude (specific), Nostalgia (light), First memory of each other. Tone: warm, lightly funny, low-stakes. Should make them smile.`,
@@ -13,26 +11,30 @@ const DEPTH_GUIDE: Record<string, string> = {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
-  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: CORS })
+  const pf = preflight(req); if (pf) return pf
+  const mn = requirePost(req); if (mn) return mn
+  const bs = checkBodySize(req, 16384); if (bs) return bs
 
+  const user = await requireUser(req); if (user instanceof Response) return user
+  const rl = await rateLimit(req, 'daily-question', { user, maxPerUser: 20, maxPerIp: 60 })
+  if (rl) return rl
+
+  const CORS = corsHeaders(req)
   try {
-    const { n1, n2, since, interests, dayIndex, askedSoFar, recentQuestions, depth, theme, apiKey } = await req.json()
-    if (!n1 || !n2) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
-        status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
-      })
-    }
-    const anthropicKey = apiKey || Deno.env.get('ANTHROPIC_API_KEY')
-    if (!anthropicKey) {
-      return new Response(JSON.stringify({ error: 'Anthropic API key not configured' }), {
-        status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
-      })
-    }
+    const body = await req.json()
+    const n1 = clip(body.n1, 60), n2 = clip(body.n2, 60)
+    const since = clip(body.since, 20)
+    const interests = clip(body.interests, 500)
+    const dayIndex = Number(body.dayIndex) || 0
+    const askedSoFar = Number(body.askedSoFar) || 0
+    const depth = clip(body.depth, 16)
+    const theme = clip(body.theme, 60)
+    const recentQuestions = Array.isArray(body.recentQuestions) ? body.recentQuestions : []
+    if (!n1 || !n2) return json({ error: 'Missing required fields' }, 400, CORS)
 
     const days = since ? Math.floor((Date.now() - new Date(since + 'T00:00:00').getTime()) / 86400000) : null
-    const seed = (askedSoFar ?? 0) + (dayIndex ?? 0)
-    const recentList = (recentQuestions || []).slice(0, 8).map((q: string, i: number) => `${i + 1}. ${q}`).join('\n')
+    const seed = askedSoFar + dayIndex
+    const recentList = recentQuestions.slice(0, 8).map((q: string, i: number) => `${i + 1}. ${clip(q, 240)}`).join('\n')
     const depthBlock = DEPTH_GUIDE[depth] || DEPTH_GUIDE.medium
     const themeBlock = theme && theme !== 'random'
       ? `\n\nTHEMED NIGHT: tonight's theme is locked to **${theme}**. Stay strictly within that category. Don't drift to other categories.`
@@ -52,44 +54,11 @@ Requirements:
 
 Return ONLY a JSON object: {"category":"<the specific category you chose>","question":"<the question, written as one warm direct sentence>"}`
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 400,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '')
-      let msg = `Anthropic API error ${res.status}`
-      try { msg = JSON.parse(errText)?.error?.message || msg } catch {}
-      return new Response(JSON.stringify({ error: msg }), {
-        status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
-      })
-    }
-
-    const data = await res.json()
-    const raw = (data.content || [])
-      .filter((b: any) => b.type === 'text')
-      .map((b: any) => b.text)
-      .join('')
-    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
-
-    return new Response(JSON.stringify(parsed), {
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-    })
-  } catch (error) {
-    console.error('Error:', error)
-    return new Response(
-      JSON.stringify({ error: (error as any)?.message || 'Failed to generate question' }),
-      { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
-    )
+    const r = await callAI({ prompt, maxTokens: 400, json: true })
+    if (!r.ok) return json({ error: r.message }, r.status, CORS)
+    try { return json(JSON.parse(stripFence(r.text)), 200, CORS) }
+    catch { return json({ error: 'Bad AI response' }, 502, CORS) }
+  } catch (e) {
+    return json({ error: (e as any)?.message || 'Failed' }, 500, CORS)
   }
 })

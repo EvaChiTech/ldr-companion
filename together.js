@@ -2,6 +2,10 @@ import { state } from './state.js'
 import { configured, sb } from './supabase.js'
 import { playKissChime } from './sound.js'
 
+const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => (
+  { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]
+))
+
 // ============================================================
 // TOGETHER TAB — thumb kiss, shared canvas, care packages
 // All ephemeral coordination over a single broadcast channel.
@@ -198,7 +202,7 @@ function buildCareButtons() {
     b.className = 'care-btn'
     b.title = p.label
     b.style.borderColor = p.color
-    b.innerHTML = `<span class="care-emoji">${p.emoji}</span><span class="care-label">${p.label}</span>`
+    b.innerHTML = `<span class="care-emoji">${escapeHtml(p.emoji)}</span><span class="care-label">${escapeHtml(p.label)}</span>`
     b.onclick = () => sendCare(p.kind)
     wrap.appendChild(b)
   })
@@ -218,9 +222,9 @@ function playCare(p) {
   const overlay = document.createElement('div')
   overlay.className = 'care-overlay'
   overlay.innerHTML = `
-    <div class="care-burst" style="color:${pkg.color}">${pkg.emoji}</div>
+    <div class="care-burst" style="color:${escapeHtml(pkg.color)}">${escapeHtml(pkg.emoji)}</div>
     <div class="care-from">
-      ${p.from === state.me ? 'Sent' : `from ${state.theirName?.() || 'your partner'}`}
+      ${p.from === state.me ? 'Sent' : `from ${escapeHtml(state.theirName?.() || 'your partner')}`}
     </div>`
   document.body.appendChild(overlay)
   setTimeout(() => overlay.classList.add('dismiss'), 1100)

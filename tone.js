@@ -71,12 +71,11 @@ async function reviewDraft() {
       .select('partner_idx,content').eq('room_id', state.room)
       .order('created_at', { ascending: false }).limit(6)
     const recentArr = (recent || []).reverse().map(m => ({ from: m.partner_idx, content: m.content }))
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
     const { data, error } = await sb.functions.invoke('tone-translator', {
       body: {
         draft, recent: recentArr,
         n1: state.cfg.n1, n2: state.cfg.n2,
-        sender: state.me, apiKey,
+        sender: state.me,
       },
     })
     if (error) throw error

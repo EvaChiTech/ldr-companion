@@ -1,36 +1,30 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import {
+  preflight, requirePost, checkBodySize,
+  requireUser, rateLimit, corsHeaders, json, clip,
+} from '../_shared/guard.ts'
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS })
-  }
-  if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405, headers: CORS })
-  }
+  const pf = preflight(req); if (pf) return pf
+  const mn = requirePost(req); if (mn) return mn
+  const bs = checkBodySize(req, 8192); if (bs) return bs
 
+  const user = await requireUser(req); if (user instanceof Response) return user
+  const rl = await rateLimit(req, 'generate-date-ideas-stream', { user, maxPerUser: 20, maxPerIp: 60 })
+  if (rl) return rl
+
+  const CORS = corsHeaders(req)
   try {
-    const { n1, n2, tz1, tz2, since, interests, apiKey } = await req.json()
-
+    const body = await req.json()
+    const n1 = clip(body.n1, 60), n2 = clip(body.n2, 60)
+    const tz1 = clip(body.tz1, 60), tz2 = clip(body.tz2, 60)
+    const since = clip(body.since, 20)
+    const interests = clip(body.interests, 500)
     if (!n1 || !n2 || !tz1 || !tz2 || !since) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
-        { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: 'Missing required fields' }, 400, CORS)
     }
 
-    const anthropicKey = apiKey || Deno.env.get('ANTHROPIC_API_KEY')
-    if (!anthropicKey) {
-      return new Response(
-        JSON.stringify({ error: 'Anthropic API key not configured' }),
-        { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
-      )
-    }
+    const openaiKey = Deno.env.get('OPENAI_API_KEY')
+    if (!openaiKey) return json({ error: 'OpenAI key not configured' }, 500, CORS)
 
     const city1 = tz1.split('/').pop()?.replace(/_/g, ' ') || tz1
     const city2 = tz2.split('/').pop()?.replace(/_/g, ' ') || tz2
@@ -60,15 +54,14 @@ Idea 3: <title>
 Idea 4: <title>
 <2 warm specific sentences>`
 
-    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+    const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
+        'Authorization': `Bearer ${openaiKey}`,
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: 'gpt-4o-mini',
         max_tokens: 1200,
         stream: true,
         messages: [{ role: 'user', content: prompt }],
@@ -77,12 +70,9 @@ Idea 4: <title>
 
     if (!upstream.ok || !upstream.body) {
       const errText = await upstream.text().catch(() => '')
-      let msg = `Anthropic API error ${upstream.status}`
+      let msg = `Upstream error ${upstream.status}`
       try { msg = JSON.parse(errText)?.error?.message || msg } catch {}
-      return new Response(
-        JSON.stringify({ error: msg }),
-        { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: msg }, 502, CORS)
     }
 
     const encoder = new TextEncoder()
@@ -105,11 +95,11 @@ Idea 4: <title>
               const payload = t.slice('data:'.length).trim()
               if (!payload || payload === '[DONE]') continue
               try {
+                // OpenAI streaming chunks look like:
+                //   {"choices":[{"delta":{"content":"…"}}]}
                 const evt = JSON.parse(payload)
-                if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
-                  const text = evt.delta.text || ''
-                  if (text) controller.enqueue(encoder.encode(`data: ${JSON.stringify(text)}\n\n`))
-                }
+                const text = evt?.choices?.[0]?.delta?.content || ''
+                if (text) controller.enqueue(encoder.encode(`data: ${JSON.stringify(text)}\n\n`))
               } catch { /* skip non-JSON */ }
             }
           }
@@ -131,11 +121,7 @@ Idea 4: <title>
         Connection: 'keep-alive',
       },
     })
-  } catch (error) {
-    console.error('Error:', error)
-    return new Response(
-      JSON.stringify({ error: (error as any)?.message || 'Failed to generate streamed ideas' }),
-      { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
-    )
+  } catch (e) {
+    return json({ error: (e as any)?.message || 'Failed' }, 500, CORS)
   }
 })

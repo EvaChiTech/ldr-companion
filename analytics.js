@@ -28,9 +28,8 @@ export function track(event_name, props = {}) {
     queue.push({
       user_id:   getUser?.()?.id || null,
       room_code: state.room || null,
-      event_name,
+      event_name: String(event_name).slice(0, 80),
       props: props || {},
-      user_agent: navigator.userAgent.slice(0, 200),
     })
     if (queue.length >= 5) flush()
     else scheduleFlush()

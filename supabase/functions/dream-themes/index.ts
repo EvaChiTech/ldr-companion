@@ -1,46 +1,39 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import {
+  preflight, requirePost, checkBodySize,
+  requireUser, rateLimit, corsHeaders, json, clip,
+} from '../_shared/guard.ts'
+import { callAI, stripFence } from '../_shared/ai.ts'
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
-  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: CORS })
-  try {
-    const { n1, n2, dreams, apiKey } = await req.json()
-    const anthropicKey = apiKey || Deno.env.get('ANTHROPIC_API_KEY')
-    if (!anthropicKey) return new Response(JSON.stringify({ error: 'Connection key not configured' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
+  const pf = preflight(req); if (pf) return pf
+  const mn = requirePost(req); if (mn) return mn
+  const bs = checkBodySize(req, 32768); if (bs) return bs
 
-    const lines = (dreams || []).slice(0, 30).map((d: any) =>
-      `- ${d.date} (${d.who}): ${(d.content || '').slice(0, 220)}`
-    ).join('\n')
+  const user = await requireUser(req); if (user instanceof Response) return user
+  const rl = await rateLimit(req, 'dream-themes', { user, maxPerUser: 12, maxPerIp: 60 })
+  if (rl) return rl
+
+  const CORS = corsHeaders(req)
+  try {
+    const body = await req.json()
+    const n1 = clip(body.n1, 60), n2 = clip(body.n2, 60)
+    const dreams = (Array.isArray(body.dreams) ? body.dreams : [])
+      .slice(0, 30)
+      .map((d: any) => `- ${clip(d.date, 20)} (${clip(d.who, 30)}): ${clip(d.content, 220)}`)
+      .join('\n')
 
     const prompt = `Two long-distance partners ${n1} and ${n2} have been logging dreams. Read the recent log and find 3-5 themes that recur across BOTH of their dreams (not just one person's). Reflect what their unconscious might be sharing right now — warmly, briefly, never overclaiming.
 
 Recent dream log:
-${lines || '(empty)'}
+${dreams || '(empty)'}
 
 Return ONLY JSON: {"shared_themes":[{"theme":"<short label>","reflection":"<2-3 sentence warm reflection on what shows up for both>"}],"only_n1":["<themes only ${n1} dreams about>"],"only_n2":["<themes only ${n2} dreams about>"]}`
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1200, messages: [{ role: 'user', content: prompt }] }),
-    })
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '')
-      let msg = `Connection error ${res.status}`
-      try { msg = JSON.parse(errText)?.error?.message || msg } catch {}
-      return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
-    }
-    const data = await res.json()
-    const raw = (data.content || []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
-    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
-    return new Response(JSON.stringify(parsed), { headers: { ...CORS, 'Content-Type': 'application/json' } })
+    const r = await callAI({ prompt, maxTokens: 1200, json: true })
+    if (!r.ok) return json({ error: r.message }, r.status, CORS)
+    try { return json(JSON.parse(stripFence(r.text)), 200, CORS) }
+    catch { return json({ error: 'Bad AI response' }, 502, CORS) }
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as any)?.message || 'Failed' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
+    return json({ error: (e as any)?.message || 'Failed' }, 500, CORS)
   }
 })

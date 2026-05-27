@@ -33,7 +33,6 @@ async function generate() {
     })
     const messageDays = Object.entries(dayCounts).map(([date, count]) => ({ date, count }))
 
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
     const { data, error } = await sb.functions.invoke('pattern-coach', {
       body: {
         n1: state.cfg.n1, n2: state.cfg.n2,
@@ -41,7 +40,6 @@ async function generate() {
         notes: (notes || []).map(n => ({ date: n.date, who: whoFor(n.partner_idx), content: n.content })),
         sleepEvents: (sleeps || []).map(s => ({ date: s.date, who: whoFor(s.partner_idx), goodnight_at: s.goodnight_at })),
         messageDays,
-        apiKey,
       },
     })
     lo.style.display = 'none'

@@ -144,9 +144,8 @@ async function generateAndShow() {
   const year = new Date().getFullYear()
   try {
     const { stats, topNote, topQuestion, topMilestone, topMood } = await gatherStats(year)
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
     const { data, error } = await sb.functions.invoke('yearly-wrapped', {
-      body: { n1: state.cfg.n1, n2: state.cfg.n2, year, stats, topNote, topQuestion, topMilestone, topMood, apiKey },
+      body: { n1: state.cfg.n1, n2: state.cfg.n2, year, stats, topNote, topQuestion, topMilestone, topMood },
     })
     if (error) throw error
     slides = []

@@ -1,6 +1,8 @@
 import { sb } from './supabase.js'
 
-const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
+// NOTE: the Anthropic API key lives ONLY as a Supabase Edge Function secret
+// (ANTHROPIC_API_KEY). It is never bundled into client code — a `VITE_`-prefixed
+// key would be served to every visitor's browser.
 
 /**
  * Generate personalized virtual date ideas using Claude via Supabase Edge Function.
@@ -18,13 +20,9 @@ export async function generateDateIdeas({ n1, n2, tz1, tz2, since, interests }) 
     throw new Error('Connection not configured. Add keys to .env first.')
   }
 
-  if (!ANTHROPIC_API_KEY || ANTHROPIC_API_KEY.includes('your-key')) {
-    throw new Error('Connection key not configured in .env')
-  }
-
   try {
     const { data, error } = await sb.functions.invoke('generate-date-ideas', {
-      body: { n1, n2, tz1, tz2, since, interests, apiKey: ANTHROPIC_API_KEY },
+      body: { n1, n2, tz1, tz2, since, interests },
     })
 
     if (error) {
@@ -43,31 +41,21 @@ export async function generateDateIdeas({ n1, n2, tz1, tz2, since, interests }) 
  */
 export async function streamDateIdeas({ n1, n2, tz1, tz2, since, interests, onToken }) {
   if (!sb) throw new Error('Connection not configured. Add keys to .env first.')
-  if (!ANTHROPIC_API_KEY || ANTHROPIC_API_KEY.includes('your-key')) {
-    throw new Error('Connection key not configured in .env')
-  }
 
-  // Supabase JS doesn't expose streaming invoke helper; we call the function URL.
-  // For local dev, the function endpoint is typically:
-  // <supabase-url>/functions/v1/<function-name>
+  // Supabase JS doesn't expose a streaming invoke helper; we call the function URL.
+  // Endpoint: <supabase-url>/functions/v1/<function-name>
   const baseUrl = import.meta.env.VITE_SUPABASE_URL
+  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
   const url = `${baseUrl}/functions/v1/generate-date-ideas-stream`
 
   const resp = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      Authorization: `Bearer ${anonKey}`,
+      apikey: anonKey,
     },
-    body: JSON.stringify({
-      n1,
-      n2,
-      tz1,
-      tz2,
-      since,
-      interests,
-      apiKey: ANTHROPIC_API_KEY,
-    }),
+    body: JSON.stringify({ n1, n2, tz1, tz2, since, interests }),
   })
 
   if (!resp.ok) {

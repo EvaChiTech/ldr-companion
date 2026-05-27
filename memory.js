@@ -68,7 +68,6 @@ async function generateChapter(preset) {
   const { start, end } = periodOf(preset)
   try {
     const corpus = await gatherCorpus(start, end)
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
     const { data, error } = await sb.functions.invoke('memory-chapter', {
       body: {
         n1: state.cfg.n1, n2: state.cfg.n2,
@@ -76,7 +75,6 @@ async function generateChapter(preset) {
         notes: corpus.notes, moods: corpus.moods, milestones: corpus.milestones,
         daily_answers: corpus.daily_answers,
         message_count: corpus.message_count, watch_count: corpus.watch_count,
-        apiKey,
       },
     })
     lo.style.display = 'none'

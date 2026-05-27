@@ -617,7 +617,7 @@ export function onChatMessage(msg) {
   const bubble = document.createElement('div')
   bubble.className = 'chat-overlay-msg ' + (mine ? 'mine' : 'theirs')
   const who = mine ? 'You' : (state.theirName?.() || 'Partner')
-  bubble.innerHTML = `<span class="cou-who">${who}</span> ${escapeHtml(msg.content)}`
+  bubble.innerHTML = `<span class="cou-who">${escapeHtml(who)}</span> ${escapeHtml(msg.content)}`
   layer.appendChild(bubble)
   // Trim to last 5
   while (layer.children.length > 5) layer.firstChild?.remove()
@@ -734,13 +734,11 @@ async function genSuggestions() {
   out.innerHTML = ''
   lo.style.display = 'flex'
   try {
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
     const { data, error } = await sb.functions.invoke('suggest-watch-night', {
       body: {
         n1: state.cfg.n1, n2: state.cfg.n2,
         interests: state.cfg.interests || '',
         mood: '',
-        apiKey,
       },
     })
     lo.style.display = 'none'
@@ -750,7 +748,7 @@ async function genSuggestions() {
       const card = document.createElement('div')
       card.className = 'sugg-card'
       card.innerHTML = `
-        <div class="sugg-kind">${s.kind || ''}</div>
+        <div class="sugg-kind">${escapeHtml(s.kind || '')}</div>
         <div class="sugg-title">${escapeHtml(s.title)}</div>
         <div class="sugg-why">${escapeHtml(s.why || '')}</div>
         <div class="sugg-actions">

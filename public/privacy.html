@@ -5,39 +5,95 @@
 <style>
 body { font-family: 'DM Sans', system-ui, sans-serif; background: #FAF6EE; color: #231510; line-height: 1.7; max-width: 720px; margin: 0 auto; padding: 60px 24px; }
 h1, h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500; }
-h1 { font-size: 36px; margin-bottom: 24px; }
+h1 { font-size: 36px; margin-bottom: 8px; }
 h2 { font-size: 22px; margin-top: 32px; margin-bottom: 12px; }
 p, li { color: #3A2C25; margin-bottom: 12px; }
 ul { padding-left: 22px; }
 a { color: #C4594A; }
 .meta { color: #7A5C52; font-size: 13px; margin-bottom: 32px; }
+.disclaimer { background: #FFF6E5; border-left: 3px solid #D4945A; padding: 12px 16px; border-radius: 6px; font-size: 14px; margin: 24px 0; }
+table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #E8DCC9; }
+th { background: #F2EAD9; }
 </style>
 </head><body>
 <h1>Privacy</h1>
-<p class="meta">Last updated: edit this date. This is a starter template — please tailor to your jurisdiction and use a lawyer for production.</p>
+<p class="meta">Last updated: 2026-05-26 · Version 2.0</p>
+
+<div class="disclaimer">
+  This policy is provided as a transparent baseline for the way LDR Companion processes data. It is not legal advice. If you operate this app commercially, have a qualified privacy lawyer review and tailor this policy to your jurisdiction and use case.
+</div>
+
+<h2>Who we are</h2>
+<p>LDR Companion ("the App") is operated by the App's publisher (the "Operator"). All data is processed in support of providing the shared room experience to two paired users. Contact for privacy enquiries: see the <a href="https://github.com/anthropics/claude-code/issues">contact channel</a> listed in the README of the source repository.</p>
 
 <h2>What we store</h2>
-<p>When you create or join a room, we store the names, timezones, and shared data you enter (notes, messages, photos, voice notes, dreams, questions, expenses, etc.) in our database. This data is keyed to a room code that only you and your partner know.</p>
-<p>If you sign in with email, we store your email address (managed by Supabase Auth) and a list of room codes you've joined to keep your devices in sync.</p>
+<p>When you create or join a room, we store the data you choose to enter into that room — names you picked, timezones, messages, daily notes, moods, photos, voice notes, vlogs, dreams, daily-question answers, milestones, calendar events, expenses, paperwork items, care pings, and other room content. This data is keyed to a room code and is readable only by the people you share that code with (enforced server-side by row-level security).</p>
+<p>If you sign in with email, we also store your email address (managed by our auth provider, Supabase) and a list of room codes you've joined so they follow you to any device.</p>
+<p>We do not collect: IP address logs (beyond short-lived rate-limit buckets), device fingerprints, advertising identifiers, or location data.</p>
 
 <h2>What we don't store</h2>
 <ul>
-  <li>We never store payment information — when you "Send something" via local services, you complete the order on the service's own site.</li>
-  <li>We don't sell your data. Ever.</li>
-  <li>We don't have a marketing team to spam you.</li>
+  <li>Payment information — when you "send something" via local services, you complete the order on the service's own site.</li>
+  <li>Sale of data to third parties. Ever.</li>
+  <li>Marketing or advertising profiles.</li>
 </ul>
 
+<h2>Where data is stored</h2>
+<p>Application data is stored in our managed Postgres database hosted by Supabase in the <strong>Singapore (ap-southeast-1)</strong> region. Static files and the web app itself are served by Vercel's global edge network. Browser push subscriptions are stored alongside the rest of your room data.</p>
+<p>For users in the European Economic Area, the United Kingdom, and Switzerland: international transfers are governed by the European Commission's Standard Contractual Clauses (SCCs) as incorporated in the Data Processing Agreements of our subprocessors. Schrems II Transfer Impact Assessments are available on request.</p>
+
+<h2>Subprocessors</h2>
+<p>We rely on the following third-party processors to provide the service:</p>
+<table>
+  <thead><tr><th>Subprocessor</th><th>Purpose</th><th>Region(s)</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://supabase.com/privacy">Supabase</a></td><td>Database, authentication, file storage, edge functions</td><td>Singapore</td></tr>
+    <tr><td><a href="https://vercel.com/legal/privacy-policy">Vercel</a></td><td>Hosting, edge delivery, lightweight analytics</td><td>Global edge</td></tr>
+    <tr><td><a href="https://openai.com/policies/privacy-policy">OpenAI</a></td><td>AI features (date ideas, daily questions, memory chapters, etc.)</td><td>United States</td></tr>
+    <tr><td>Web Push gateways (your browser vendor)</td><td>Delivery of push notifications you opt into</td><td>Global</td></tr>
+  </tbody>
+</table>
+<p>When you use an AI feature, the relevant inputs (e.g. your partner names, interests, the content the AI is summarizing) are sent to OpenAI's Chat Completions API to generate the response. Per <a href="https://platform.openai.com/docs/models/how-we-use-your-data">OpenAI's API data-usage policy</a>, inputs and outputs sent via the API are not used to train their models. Data is retained by OpenAI for up to 30 days for abuse monitoring then deleted, unless a longer Zero Data Retention agreement is in place.</p>
+
+<h2>Legal basis (GDPR Art. 6)</h2>
+<ul>
+  <li><strong>Performance of a contract</strong> — to provide you the shared room experience you signed up for.</li>
+  <li><strong>Legitimate interest</strong> — to keep the service operating securely, prevent abuse, and deliver the AI / notification features you choose to use.</li>
+  <li><strong>Consent</strong> — for browser push notifications and the optional email sign-in. You can withdraw consent at any time from the in-app settings.</li>
+</ul>
+
+<h2>Retention</h2>
+<p>Room data is retained as long as the room exists. When you initiate "Delete all my data" from the in-app account modal, all rooms you belong to are scheduled for deletion within 30 days; any other member of the same room can cancel the deletion during that window. After 30 days the data is removed and cascades to every room-scoped table. Rate-limit counters are kept for at most 24 hours. Authentication identifiers persist as long as your account does.</p>
+
 <h2>AI features</h2>
-<p>When you use AI features (date-night suggestions, daily questions, memory book, tone translator, etc.), the relevant data is sent to Anthropic's Claude API to generate the response. Anthropic's privacy practices apply to that processing.</p>
+<p>When you use AI features (date-night suggestions, daily questions, memory book, tone translator, etc.), the relevant data is sent to Anthropic's Claude API to generate the response. Anthropic's privacy practices apply to that processing. We constrain the data we send so it includes the minimum needed for the feature to work; large user inputs are truncated.</p>
 
 <h2>Notifications</h2>
-<p>If you enable browser notifications, we store the push-subscription endpoint your browser issues. We use it only to send you notifications about activity in your rooms.</p>
+<p>If you enable browser notifications, we store the push-subscription endpoint your browser issues. We use it only to send you notifications about activity in your rooms. You can revoke this at any time from your browser's notification settings.</p>
 
 <h2>Analytics</h2>
-<p>We track basic feature usage (which tabs you visit, when you create a room, etc.) to learn what to improve. No message content, photo content, or personal text is included in analytics events.</p>
+<p>We track basic feature-usage events (which tabs you visit, when a room is created, when an AI feature is invoked, etc.) so we know what to improve. Events are tied to your auth identifier and the room code; no message content, photo content, personal text, or IP address is stored in analytics events.</p>
 
-<h2>Deleting your data</h2>
-<p>You can leave any room at any time. To request full deletion, email us at the address in the README.</p>
+<h2>Your rights</h2>
+<p>Depending on where you live, you may have the right to:</p>
+<ul>
+  <li>Access the data we hold about you (use the "Download all room data as JSON" button in the header).</li>
+  <li>Correct inaccurate data (edit it in the app).</li>
+  <li>Delete your data ("Delete all my data" in the account modal).</li>
+  <li>Object to or restrict processing.</li>
+  <li>Lodge a complaint with your local data protection authority.</li>
+</ul>
+<p>Because a room is shared between two people, deleting your data ends the room for the other member too. We surface a 30-day cancellation window so the other partner is not surprised by an irreversible action.</p>
 
-<p><a href="/">← Back to the app</a></p>
+<h2>Children</h2>
+<p>This app is not intended for users under 16 (or the equivalent age of digital consent in your jurisdiction, per GDPR Art. 8). The age confirmation on first run is binding; do not use the app if you are under 16. If you believe a minor has used the app, contact us and we will delete their data.</p>
+
+<h2>Security</h2>
+<p>We use row-level security to ensure only members of a room can read or write its data, transport encryption in transit (HTTPS / WSS), and rate-limiting on AI endpoints. No method of electronic storage is 100% secure; we will notify you and the relevant authority within 72 hours of becoming aware of a personal-data breach, in line with GDPR Art. 33.</p>
+
+<h2>Changes</h2>
+<p>If we materially change this policy, we will surface the change in-app and update the "Last updated" date above. Continued use after such a change constitutes acceptance.</p>
+
+<p><a href="/">← Back to the app</a> · <a href="/terms.html">Terms of Service</a></p>
 </body></html>

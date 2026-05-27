@@ -46,9 +46,8 @@ async function findThemes() {
   out.innerHTML = ''; lo.style.display = 'flex'
   try {
     const dreams = (await fetchDreams(30)).map(d => ({ date: d.date, who: whoFor(d.partner_idx), content: d.content }))
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
     const { data, error } = await sb.functions.invoke('dream-themes', {
-      body: { n1: state.cfg.n1, n2: state.cfg.n2, dreams, apiKey },
+      body: { n1: state.cfg.n1, n2: state.cfg.n2, dreams },
     })
     lo.style.display = 'none'
     if (error) throw error

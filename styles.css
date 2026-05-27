@@ -356,8 +356,8 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.65; }
   background: rgba(0,0,0,0.55);
   color: #fff;
   font-size: 13px; line-height: 1.4;
-  backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   transition: opacity .8s ease;
   animation: chat-pop .3s ease;
 }
@@ -2141,3 +2141,485 @@ body.dark-mode .notice code {
   background: rgba(255,255,255,0.10);
   color: var(--text);
 }
+
+/* ============================================================
+   VLOGS — grid, recorder modal, player modal, watermark pill
+============================================================ */
+.vlog-head-actions { display: flex; gap: 8px; align-items: center; }
+
+.vlog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+.vlog-cell {
+  position: relative;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: transform .12s, box-shadow .12s, border-color .12s;
+  display: flex; flex-direction: column;
+}
+.vlog-cell:hover { transform: translateY(-1px); box-shadow: var(--shadow); border-color: var(--primary); }
+.vlog-cell.unseen { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-l); }
+
+.vlog-thumb-wrap {
+  position: relative;
+  width: 100%;
+  background: linear-gradient(135deg, #2A1810, #4a2418);
+  overflow: hidden;
+}
+.vlog-cell-portrait  .vlog-thumb-wrap { aspect-ratio: 9 / 16; }
+.vlog-cell-landscape .vlog-thumb-wrap { aspect-ratio: 16 / 9; }
+.vlog-cell-square    .vlog-thumb-wrap { aspect-ratio: 1 / 1;  }
+
+.vlog-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vlog-thumb-fallback {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%;
+  color: #FAF6EE; font-size: 36px;
+}
+.vlog-play-glyph {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #FAF6EE; font-size: 28px;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+  opacity: 0.85;
+  pointer-events: none;
+}
+.vlog-dur {
+  position: absolute; bottom: 6px; right: 6px;
+  background: rgba(0,0,0,0.55);
+  color: #FAF6EE;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  letter-spacing: 0.02em;
+}
+.vlog-new-dot {
+  position: absolute; top: 6px; right: 6px;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 2px rgba(250,246,238,0.9);
+}
+.vlog-cap {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 8px 10px 4px;
+  font-size: 12px;
+  gap: 6px;
+}
+.vlog-who  { font-weight: 600; color: var(--text); }
+.vlog-date { color: var(--text-3); }
+.vlog-caption-line {
+  padding: 0 10px 10px;
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.4;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+
+/* ── Recorder modal ────────────────────────────── */
+.vlog-recorder {
+  position: fixed; inset: 0;
+  z-index: 300;
+  display: flex; flex-direction: column;
+  background: #0A0604;
+  color: #FAF6EE;
+}
+.vlog-rec-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0));
+  position: relative; z-index: 2;
+}
+.vlog-rec-icon {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #FAF6EE; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+.vlog-rec-icon:hover { background: rgba(255,255,255,0.18); }
+.vlog-rec-timer-wrap { display: flex; align-items: center; gap: 8px; }
+.vlog-rec-timer {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  background: rgba(0,0,0,0.4);
+  padding: 4px 10px;
+  border-radius: 14px;
+}
+.vlog-recorder[data-phase="recording"] .vlog-rec-timer { background: rgba(196, 89, 74, 0.85); }
+
+.vlog-rec-stage {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.vlog-rec-preview {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  background: #000;
+  display: none;
+}
+.vlog-recorder[data-phase="idle"]      #vlog-preview-video,
+.vlog-recorder[data-phase="recording"] #vlog-preview-video { display: block; }
+.vlog-recorder[data-phase="review"]    #vlog-review-video  { display: block; }
+/* Mirror the front-camera preview, but never the playback */
+.vlog-recorder[data-phase="idle"]      #vlog-preview-video,
+.vlog-recorder[data-phase="recording"] #vlog-preview-video { transform: scaleX(-1); }
+
+/* Show/hide control panes by phase */
+.vlog-rec-only-idle,
+.vlog-rec-only-recording,
+.vlog-rec-only-review { display: none; }
+.vlog-recorder[data-phase="idle"]      .vlog-rec-only-idle      { display: block; }
+.vlog-recorder[data-phase="recording"] .vlog-rec-only-recording { display: block; }
+.vlog-recorder[data-phase="review"]    .vlog-rec-only-review    { display: block; }
+
+.vlog-live-watermark {
+  position: absolute;
+  left: 22px; bottom: 22px;
+  background: rgba(20, 14, 12, 0.62);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+  pointer-events: none;
+  max-width: 70%;
+}
+.vlog-wm-line.pri  { color: #FAF6EE; }
+.vlog-wm-line.sec  { color: #FAF6EE; opacity: 0.88; }
+.vlog-wm-line.meta { color: #F5C794; margin-top: 2px; }
+
+.vlog-rec-progress-track {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 3px;
+  background: rgba(255,255,255,0.15);
+}
+.vlog-rec-progress-fill {
+  height: 100%;
+  width: 0;
+  background: var(--primary);
+  transition: width 0.1s linear;
+}
+
+.vlog-rec-controls {
+  padding: 18px 18px max(24px, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0));
+  text-align: center;
+}
+.vlog-rec-hint { font-size: 12px; color: rgba(250,246,238,0.7); margin-bottom: 14px; }
+.vlog-rec-shutter {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  border: 4px solid #FAF6EE;
+  background: var(--primary);
+  margin: 0 auto;
+  display: block;
+  cursor: pointer;
+  transition: transform .08s, background .12s, border-radius .15s;
+}
+.vlog-rec-shutter:active { transform: scale(0.94); }
+.vlog-rec-shutter.recording {
+  background: var(--primary);
+  border-radius: 14px;
+  width: 60px; height: 60px;
+  animation: vlog-rec-pulse 1.2s ease-in-out infinite;
+}
+@keyframes vlog-rec-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196, 89, 74, 0.4); }
+  50%      { box-shadow: 0 0 0 16px rgba(196, 89, 74, 0); }
+}
+
+.vlog-rec-review-pane { text-align: left; max-width: 480px; margin: 0 auto; }
+.vlog-caption-input {
+  width: 100%;
+  min-height: 60px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #FAF6EE;
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  font-size: 14px;
+  resize: vertical;
+  font-family: var(--sans);
+}
+.vlog-caption-input::placeholder { color: rgba(250,246,238,0.55); }
+.vlog-rec-review-actions {
+  display: flex; justify-content: space-between; gap: 10px;
+  margin-top: 12px;
+}
+
+/* ── Player modal ──────────────────────────────── */
+.vlog-player {
+  position: fixed; inset: 0;
+  z-index: 290;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.vlog-player-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(10, 6, 4, 0.88);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.vlog-player-shell {
+  position: relative;
+  display: flex; flex-direction: column;
+  gap: 14px;
+  max-height: 100%;
+  width: 100%;
+  max-width: 520px;
+}
+.vlog-player[data-orient="landscape"] .vlog-player-shell { max-width: 920px; }
+
+.vlog-player-stage {
+  position: relative;
+  background: #000;
+  border-radius: var(--r);
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.vlog-player[data-orient="portrait"]  .vlog-player-stage { aspect-ratio: 9 / 16; max-height: 75vh; }
+.vlog-player[data-orient="landscape"] .vlog-player-stage { aspect-ratio: 16 / 9; }
+.vlog-player[data-orient="square"]    .vlog-player-stage { aspect-ratio: 1 / 1;  }
+
+.vlog-player-video {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+.vlog-player-watermark { left: 16px; bottom: 16px; font-size: 12px; }
+
+.vlog-player-meta { color: #FAF6EE; }
+.vlog-player-caption {
+  font-size: 14px;
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+.vlog-player-actions {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.vlog-player-actions .btn-ghost {
+  color: #FAF6EE;
+  border-color: rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.06);
+}
+
+.vlog-reply-badge {
+  position: absolute;
+  top: 6px; left: 6px;
+  background: rgba(42, 95, 122, 0.92);
+  color: #FAF6EE;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 8px;
+  letter-spacing: 0.02em;
+}
+
+.vlog-player-reply-meta { margin: -4px 0 10px; }
+.vlog-reply-jump {
+  background: rgba(42, 95, 122, 0.18);
+  border: 1px solid rgba(42, 95, 122, 0.45);
+  color: #FAF6EE;
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.vlog-reply-jump:hover { background: rgba(42, 95, 122, 0.32); }
+
+/* Recorder accent when in reply mode */
+.vlog-recorder[data-mode="reply"] .vlog-rec-timer { background: rgba(42, 95, 122, 0.85); }
+.vlog-recorder[data-mode="reply"] .vlog-rec-hint { color: #B6D6E5; }
+
+/* ── Chip groups (durations, watermark style, end card, duet layout) ── */
+.vlog-chip-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.vlog-chip {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #FAF6EE;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-family: var(--sans);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, transform 0.08s;
+}
+.vlog-chip:hover { background: rgba(255,255,255,0.16); }
+.vlog-chip:active { transform: scale(0.97); }
+.vlog-chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #FAF6EE;
+  font-weight: 600;
+}
+
+/* Recorder duration row sits above the shutter, below the live preview */
+.vlog-rec-duration-row {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 14px;
+  display: flex;
+  justify-content: center;
+  z-index: 3;
+  pointer-events: none;
+}
+.vlog-rec-duration-row .vlog-chip-group {
+  background: rgba(20, 14, 12, 0.62);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  padding: 6px 8px;
+  border-radius: 999px;
+  pointer-events: auto;
+}
+.vlog-rec-duration-row .vlog-chip {
+  background: transparent;
+  border-color: transparent;
+  padding: 4px 12px;
+}
+.vlog-rec-duration-row .vlog-chip:hover { background: rgba(255,255,255,0.08); }
+.vlog-rec-duration-row .vlog-chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Player export options panel */
+.vlog-options {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: var(--r-sm);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  color: #FAF6EE;
+}
+.vlog-options summary {
+  cursor: pointer;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(250,246,238,0.7);
+  padding: 4px 0;
+  list-style: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.vlog-options summary::-webkit-details-marker { display: none; }
+.vlog-options summary::before {
+  content: '⚙  ';
+  margin-right: 4px;
+}
+.vlog-options[open] summary { margin-bottom: 8px; }
+
+.vlog-option-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  flex-wrap: wrap;
+}
+.vlog-option-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(250,246,238,0.55);
+  min-width: 90px;
+}
+
+/* Dark mode tweaks */
+body.dark-mode .vlog-cell { background: var(--surface-2); }
+body.dark-mode .vlog-who  { color: var(--text); }
+body.dark-mode .vlog-caption-line { color: var(--text-2); }
+
+/* ============================================================
+   LEGAL — consent gate + privacy policy modals
+============================================================ */
+.legal-modal {
+  position: fixed; inset: 0;
+  z-index: 400;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  background: rgba(20, 14, 12, 0.66);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.legal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-md);
+  width: 100%; max-width: 480px;
+  padding: 24px;
+}
+.legal-card-scroll { max-height: 84vh; display: flex; flex-direction: column; }
+.legal-head { display: flex; align-items: center; justify-content: space-between; }
+.legal-title { font-family: var(--serif); font-size: 24px; font-weight: 400; }
+.legal-close {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--surface-2);
+  font-size: 20px; color: var(--text-2); line-height: 1;
+}
+.legal-close:hover { background: var(--surface-3); }
+.legal-intro { font-size: 14px; color: var(--text-2); margin: 12px 0 16px; line-height: 1.6; }
+.legal-body {
+  margin-top: 14px; overflow-y: auto;
+  font-size: 13.5px; line-height: 1.65; color: var(--text-2);
+}
+.legal-body h3 {
+  font-family: var(--sans); font-size: 14px; font-weight: 600;
+  color: var(--text); margin: 18px 0 6px;
+}
+.legal-body p { margin-bottom: 8px; }
+.legal-body ul { margin: 6px 0 8px 18px; }
+.legal-body li { margin-bottom: 4px; }
+.legal-body a, .legal-intro a { color: var(--primary); }
+
+.consent-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 13.5px; color: var(--text-2); line-height: 1.5;
+  margin-bottom: 12px; cursor: pointer;
+}
+.consent-row input { margin-top: 3px; flex-shrink: 0; }
+.consent-row a { color: var(--primary); }
+#consent-agree { margin-top: 6px; }
+#consent-agree:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Account modal — privacy link + delete-data danger zone */
+.auth-danger {
+  margin-top: 16px; padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+}
+.auth-privacy-link { font-size: 12px; color: var(--text-3); }
+.auth-privacy-link:hover { color: var(--primary); }
+.auth-danger-btn {
+  background: none; border: 1px solid rgba(196, 89, 74, 0.4);
+  color: var(--primary); font-size: 12px;
+  padding: 6px 12px; border-radius: var(--r-sm);
+}
+.auth-danger-btn:hover { background: var(--primary-l); }
+
+body.dark-mode .legal-card { background: var(--surface); color: var(--text); }
+body.dark-mode .legal-title { color: var(--text); }
+body.dark-mode .legal-body h3 { color: var(--text); }
