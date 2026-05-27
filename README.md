@@ -113,10 +113,14 @@ If the schema didn't auto-enable it:
 3. Click **Settings → API Keys → Create Key**
 4. Copy the key starting with `sk-ant-...`
 
-> ⚠️ **Note on the Anthropic key in the browser:**
-> For local development this is fine. Before deploying publicly, move the AI call
-> to a backend serverless function (Netlify Function, Vercel Edge Function, etc.)
-> so your key isn't exposed in client-side code.
+> 🔒 **The Anthropic key never goes in `.env` or any `VITE_` variable.**
+> Anything prefixed `VITE_` is compiled into the public client bundle and is
+> readable by every visitor. The AI calls run through Supabase Edge Functions —
+> set the key as an Edge Function secret instead:
+>
+> ```
+> supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+> ```
 
 ---
 
@@ -126,12 +130,12 @@ In VS Code, open `.env` and fill in your values:
 
 ```env
 VITE_SUPABASE_URL=https://xxxxxxxxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xxxxxxxxxx
-
-VITE_ANTHROPIC_API_KEY=sk-ant-api03-xxxxxxxxxx
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxxxx
 ```
 
-Save the file. The `.gitignore` already excludes `.env` from git.
+The Anthropic key is **not** here — see the note above; it lives only as a
+Supabase Edge Function secret. Save the file. The `.gitignore` already
+excludes `.env` from git.
 
 ---
 
@@ -216,11 +220,12 @@ npm run build
 
 ## Environment Variable Reference
 
-| Variable | Where to get it | Required |
-|---|---|---|
-| `VITE_SUPABASE_URL` | Supabase → Project Settings → API → Project URL | ✅ Yes |
-| `VITE_SUPABASE_ANON_KEY` | Supabase → Project Settings → API → anon/public | ✅ Yes |
-| `VITE_ANTHROPIC_API_KEY` | console.anthropic.com → API Keys | For AI ideas |
+| Variable | Where it goes | Where to get it | Required |
+|---|---|---|---|
+| `VITE_SUPABASE_URL` | `.env` / Vercel env | Supabase → Project Settings → API → Project URL | ✅ Yes |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | `.env` / Vercel env | Supabase → Project Settings → API → publishable | ✅ Yes |
+| `ANTHROPIC_API_KEY` | Supabase Edge Function **secret** (never a `VITE_` var) | console.anthropic.com → API Keys | For AI ideas |
+| `ALLOWED_ORIGINS` | Supabase Edge Function secret | your deployed origin(s), comma-separated | Recommended |
 
 ---
 
@@ -233,10 +238,7 @@ npm run build
 → Go to Supabase → Database → Replication and make sure `messages` table has Realtime enabled.
 
 **AI ideas button does nothing**
-→ Check `VITE_ANTHROPIC_API_KEY` in `.env`. Open DevTools → Network tab and look for a failed request to `api.anthropic.com`.
-
-**CORS error on Anthropic API**
-→ Anthropic's API allows browser requests. If blocked, check you're on `http://localhost:5173` (Vite dev), not opening `index.html` directly as a file.
+→ Confirm the `ANTHROPIC_API_KEY` secret is set on your Supabase Edge Functions (`supabase secrets list`). Open DevTools → Network tab and check the call to `/functions/v1/generate-date-ideas`; inspect the Supabase Edge Function logs for the real error.
 
 **Vite says "cannot find module"**
 → Run `npm install` again. Make sure you're in the project root directory.

@@ -83,7 +83,6 @@ async function run() {
 
   try {
     const tz = state.theirTz?.()
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
     const { data, error } = await sb.functions.invoke('local-care', {
       body: {
         senderName: state.cfg?.[`n${state.me}`],
@@ -92,7 +91,6 @@ async function run() {
         recipientCity: tz ? tz.split('/').pop().replace(/_/g, ' ') : null,
         mood: window.__lc_partnerMood || null,
         intent,
-        apiKey,
       },
     })
     lo.style.display = 'none'

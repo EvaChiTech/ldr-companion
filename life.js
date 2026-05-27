@@ -280,7 +280,7 @@ async function renderCare() {
     CARE_KINDS.forEach(c => {
       const b = document.createElement('button')
       b.className = 'care-ping-btn'
-      b.innerHTML = `<span class="care-ping-emoji">${c.emoji}</span><span>${c.label}</span>`
+      b.innerHTML = `<span class="care-ping-emoji">${escapeHtml(c.emoji)}</span><span>${escapeHtml(c.label)}</span>`
       b.onclick = () => sendCarePing(c.kind)
       buttons.appendChild(b)
     })
@@ -295,12 +295,12 @@ async function renderCare() {
     const fromMe = p.for_partner !== state.me  // I sent it (it's "for them")
     return `
       <div class="care-ping ${p.resolved ? 'resolved' : ''} ${fromMe ? 'mine' : 'theirs'}">
-        <span class="care-ping-emoji">${c.emoji}</span>
+        <span class="care-ping-emoji">${escapeHtml(c.emoji)}</span>
         <div class="care-ping-content">
-          <div class="care-ping-label">${fromMe ? 'You sent' : `${state.theirName?.() || 'They'} need`}: ${escapeHtml(c.label)}${p.resolved ? ' ✓' : ''}</div>
+          <div class="care-ping-label">${fromMe ? 'You sent' : `${escapeHtml(state.theirName?.() || 'They')} need`}: ${escapeHtml(c.label)}${p.resolved ? ' ✓' : ''}</div>
           ${p.message ? `<div class="care-ping-msg">${escapeHtml(p.message)}</div>` : ''}
         </div>
-        ${!p.resolved && !fromMe ? `<button class="btn btn-secondary btn-sm care-resolve" data-id="${p.id}">I'm on it</button>` : ''}
+        ${!p.resolved && !fromMe ? `<button class="btn btn-secondary btn-sm care-resolve" data-id="${Number(p.id) || 0}">I'm on it</button>` : ''}
       </div>`
   }).join('')
   list.querySelectorAll('.care-resolve').forEach(b => b.addEventListener('click', () => resolveCare(parseInt(b.dataset.id, 10))))

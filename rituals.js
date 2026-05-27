@@ -61,14 +61,12 @@ async function generateAndInsertQuestion() {
 
   let question, category
   try {
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
     const { data, error } = await sb.functions.invoke('daily-question', {
       body: {
         n1: state.cfg.n1, n2: state.cfg.n2,
         since, interests: state.cfg.interests,
         dayIndex, askedSoFar, recentQuestions,
         depth, theme,
-        apiKey,
       },
     })
     if (error) throw error
@@ -338,18 +336,18 @@ async function renderHistory() {
     const card = document.createElement('article')
     card.className = 'dq-history-card'
     card.innerHTML = `
-      <div class="dq-history-meta">${q.date} ${q.category ? '· ' + escapeHtml(q.category) : ''}</div>
+      <div class="dq-history-meta">${escapeHtml(q.date)} ${q.category ? '· ' + escapeHtml(q.category) : ''}</div>
       <div class="dq-history-q">${escapeHtml(q.question)}</div>
       <div class="dq-history-answers">
         <div class="dq-history-ans">
           <span class="dq-history-who">${escapeHtml(state.cfg?.n1 || 'Partner 1')}</span>
           <span>${renderAnsText(a1)}</span>
-          ${a1?.audio_url ? `<audio controls preload="none" src="${a1.audio_url}" class="dq-history-audio"></audio>` : ''}
+          ${a1?.audio_url ? `<audio controls preload="none" src="${escapeHtml(a1.audio_url)}" class="dq-history-audio"></audio>` : ''}
         </div>
         <div class="dq-history-ans">
           <span class="dq-history-who">${escapeHtml(state.cfg?.n2 || 'Partner 2')}</span>
           <span>${renderAnsText(a2)}</span>
-          ${a2?.audio_url ? `<audio controls preload="none" src="${a2.audio_url}" class="dq-history-audio"></audio>` : ''}
+          ${a2?.audio_url ? `<audio controls preload="none" src="${escapeHtml(a2.audio_url)}" class="dq-history-audio"></audio>` : ''}
         </div>
       </div>`
     list.appendChild(card)

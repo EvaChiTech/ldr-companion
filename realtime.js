@@ -7,7 +7,7 @@ let channel = null
  * Subscribe to all real-time events for the current room.
  * Calls the provided handlers when data changes.
  */
-export function subscribeRoom({ onMessage, onMood, onNote, onBucket, onMilestone, onWatch, onDailyAnswer, onSleepEvent, onDailyQuestion, onPresenceChange, onSoundCapsule, onReunion, onLetter, onDream, onCalendar, onExpense, onVisa, onCare }) {
+export function subscribeRoom({ onMessage, onMood, onNote, onBucket, onMilestone, onWatch, onDailyAnswer, onSleepEvent, onDailyQuestion, onPresenceChange, onSoundCapsule, onReunion, onLetter, onDream, onCalendar, onExpense, onVisa, onCare, onVlog }) {
   if (channel) sb.removeChannel(channel)
 
   channel = sb.channel('room:' + state.room, {
@@ -113,6 +113,8 @@ export function subscribeRoom({ onMessage, onMood, onNote, onBucket, onMilestone
     .on('postgres_changes', { event: '*', schema: 'public', table: 'visa_items',      filter: `room_id=eq.${state.room}` }, () => onVisa?.())
     // Care pings
     .on('postgres_changes', { event: '*', schema: 'public', table: 'care_pings',      filter: `room_id=eq.${state.room}` }, () => onCare?.())
+    // Vlogs
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'vlogs',           filter: `room_id=eq.${state.room}` }, payload => onVlog?.(payload))
 
     // Presence — detect when partner comes online / offline
     .on('presence', { event: 'sync' }, () => {

@@ -33,10 +33,32 @@ import { initI18n, t } from './i18n.js'
 import { maybeShowWelcome, showWelcomeForce } from './welcome.js'
 import { initErrorMonitor } from './errors.js'
 import { initAlbum, teardownAlbum, onRemoteAlbumUpdate } from './album.js'
+import { initVlog, teardownVlog, onRemoteVlog } from './vlog.js'
+import { initLegal, requireConsent } from './legal.js'
 import { initDarkToggle, exportThisRoom, shareRoom } from './preferences.js'
 import { initStats, refreshStats, teardownStats } from './stats.js'
 import { inject as injectVercelAnalytics } from '@vercel/analytics'
+import '@fontsource/dm-sans/300.css'
+import '@fontsource/dm-sans/400.css'
+import '@fontsource/dm-sans/500.css'
+import '@fontsource/dm-sans/300-italic.css'
+import '@fontsource/cormorant-garamond/400.css'
+import '@fontsource/cormorant-garamond/500.css'
+import '@fontsource/cormorant-garamond/400-italic.css'
+import '@fontsource/cormorant-garamond/500-italic.css'
 injectVercelAnalytics()
+
+// Refuse to render any media URL that isn't from our own Supabase origin —
+// a row in a (previously open-RLS) table could have carried an attacker URL.
+const SUPABASE_ORIGIN = (() => {
+  try { return new URL(import.meta.env.VITE_SUPABASE_URL).origin } catch { return '' }
+})()
+function isSafeMediaUrl(url) {
+  try {
+    const u = new URL(String(url))
+    return u.protocol === 'https:' && !!SUPABASE_ORIGIN && u.origin === SUPABASE_ORIGIN
+  } catch { return false }
+}
 
 
 // ============================================================
@@ -82,6 +104,11 @@ const MOODS = ["Happy 😊", "Missing you 💭", "Peaceful 🌿", "Lonely 🌧",
 // ── DOM shortcuts ──────────────────────────────────────────
 const $ = id => document.getElementById(id)
 
+// Escape user/DB-sourced strings before they touch innerHTML.
+const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => (
+  { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]
+))
+
 // ── Toast ──────────────────────────────────────────────────
 let toastTimer = null
 function toast(msg) {
@@ -113,8 +140,14 @@ function initSelects() {
 }
 
 function genCode() {
+  // RLS now gates access by room_members, not by code, so the code only
+  // needs to be unguessable enough to resist remote enumeration of a single
+  // room (an attacker still has to be added as a member via join_room).
+  // 8 chars over a 32-symbol unambiguous alphabet ≈ 1.1 trillion combos.
   const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  return Array.from({length:8}, () => c[Math.floor(Math.random() * c.length)]).join('')
+  const bytes = new Uint32Array(8)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, b => c[b % c.length]).join('')
 }
 
 async function createRoom() {
@@ -132,14 +165,6 @@ async function createRoom() {
     err.textContent = 'Custom code must be at least 4 characters (A–Z, 0–9, _ or -).'
     err.style.display = 'block'; return
   }
-  if (configured && customRaw) {
-    try {
-      if (await db.roomCodeExists(customRaw)) {
-        err.textContent = 'That code is taken — try another, or leave it blank for an auto-generated one.'
-        err.style.display = 'block'; return
-      }
-    } catch {}
-  }
 
   const cfg = {
     id:        code,
@@ -156,11 +181,22 @@ async function createRoom() {
   }
 
   if (configured) {
-    try { await db.createRoomInDB(cfg) }
-    catch (e) { err.textContent = 'Database error: ' + e.message; err.style.display = 'block'; return }
+    try {
+      // create_room RPC inserts the room and records us as partner 1.
+      // It raises if the custom code is taken — no separate existence check.
+      const room = await db.createRoom(cfg)
+      state.cfg = room || cfg
+    } catch (e) {
+      err.textContent = /already exists/i.test(e.message || '')
+        ? 'That code is taken — try another, or leave it blank for an auto-generated one.'
+        : 'Could not create room: ' + (e.message || 'unknown error')
+      err.style.display = 'block'; return
+    }
+  } else {
+    state.cfg = cfg
   }
 
-  state.room = code; state.cfg = cfg; state.me = 1
+  state.room = code; state.me = 1
   upsertRoomMembership({ code, me: 1, alias: cfg.alias, kind: cfg.kind, theme: cfg.theme })
   setActiveRoomCode(code)
   if (isSignedIn()) pushRoomLink({ code, me: 1, alias: cfg.alias, kind: cfg.kind, theme: cfg.theme }).catch(console.error)
@@ -177,7 +213,8 @@ async function joinRoom() {
   if (!configured)     { err.textContent = 'Connection not configured — add your project keys to .env first.'; err.style.display = 'block'; return }
 
   try {
-    const data = await db.fetchRoom(code)
+    // preview_room RPC: shows names/cities without joining yet.
+    const data = await db.previewRoom(code)
     state.cfg = data; state.room = code
     $('pk-n1').textContent = data.n1; $('pk-tz1').textContent = cityLabel(data.tz1)
     $('pk-n2').textContent = data.n2; $('pk-tz2').textContent = cityLabel(data.tz2)
@@ -188,8 +225,18 @@ async function joinRoom() {
   }
 }
 
-function pickPartner(p) {
+async function pickPartner(p) {
   state.me = p
+  if (configured) {
+    try {
+      // join_room RPC records membership, then returns the full room row.
+      const room = await db.joinRoom(state.room, p)
+      if (room) state.cfg = room
+    } catch (e) {
+      toast('Could not join room: ' + (e?.message || 'unknown error'))
+      return
+    }
+  }
   upsertRoomMembership({
     code: state.room, me: p,
     alias: state.cfg?.alias, kind: state.cfg?.kind, theme: state.cfg?.theme,
@@ -262,6 +309,7 @@ function startApp() {
       onExpense:        () => onRemoteLifeEvent('expense'),
       onVisa:           () => onRemoteLifeEvent('visa'),
       onCare:           () => onRemoteLifeEvent('care'),
+      onVlog:           onRemoteVlog,
     })
     initReunion()
     initHarmony()
@@ -408,7 +456,7 @@ function fmtTs(ts) {
 function renderMessages() {
   const c = $('chat-messages'); c.innerHTML = ''
   if (!state.messages.length) {
-    c.innerHTML = `<div class="chat-empty">No messages yet.<br>Say something to ${state.theirName()}...</div>`
+    c.innerHTML = `<div class="chat-empty">No messages yet.<br>Say something to ${escapeHtml(state.theirName())}...</div>`
     return
   }
   const theirIdxStr = String(state.theirIdx())
@@ -419,7 +467,7 @@ function renderMessages() {
     const metaText = (mine ? 'You' : state.theirName()) + ' · ' + fmtTs(msg.created_at) + (readByThem ? ' · ✓✓ read' : (mine ? ' · ✓ sent' : ''))
     const meta = Object.assign(document.createElement('div'), { className: 'msg-meta' + (readByThem ? ' read' : ''), textContent: metaText })
     const bub  = document.createElement('div'); bub.className = 'msg-bubble'
-    if (msg.image_url) {
+    if (msg.image_url && isSafeMediaUrl(msg.image_url)) {
       const img = document.createElement('img')
       img.className = 'msg-image'
       img.src = msg.image_url
@@ -450,7 +498,11 @@ function openLightbox(url) {
     document.body.appendChild(lb)
     lb.addEventListener('click', () => lb.classList.add('hidden'))
   }
-  lb.innerHTML = `<img src="${url}" alt="photo">`
+  lb.textContent = ''
+  const img = document.createElement('img')
+  img.src = url
+  img.alt = 'photo'
+  lb.appendChild(img)
   lb.classList.remove('hidden')
 }
 
@@ -631,8 +683,8 @@ async function genIdeas() {
       const d = document.createElement('div'); d.className = 'idea-card'
       d.innerHTML = `
         <div class="idea-num">Idea ${i + 1}</div>
-        <div class="idea-title">${idea.title}</div>
-        <div class="idea-desc">${idea.description}</div>
+        <div class="idea-title">${escapeHtml(idea.title)}</div>
+        <div class="idea-desc">${escapeHtml(idea.description)}</div>
       `
       el.appendChild(d)
     })
@@ -751,9 +803,9 @@ function renderTimeline() {
     const d = new Date(m.date + 'T00:00:00')
     right.innerHTML = `
       <div class="tl-date">${d.toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'})}</div>
-      <div class="tl-title">${m.title}</div>
-      ${m.note ? `<div class="tl-note">${m.note}</div>` : ''}
-      <button class="btn btn-ghost btn-sm" style="margin-top:8px;opacity:.55;" onclick="window.app.removeMilestone(${m.id})">Remove</button>
+      <div class="tl-title">${escapeHtml(m.title)}</div>
+      ${m.note ? `<div class="tl-note">${escapeHtml(m.note)}</div>` : ''}
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px;opacity:.55;" data-action="removeMilestone" data-arg="${Number(m.id)}">Remove</button>
     `
     row.append(left, right); tl.appendChild(row)
   })
@@ -800,7 +852,7 @@ function switchTab(tab, btn) {
     tabInited.together = true
   }
   if (tab === 'rituals'  && !tabInited.rituals)  { initRitualsTab();  initDreams();    tabInited.rituals = true }
-  if (tab === 'story'    && !tabInited.story)    { initMemoryBook();  initLetters();   initAlbum();   tabInited.story   = true }
+  if (tab === 'story'    && !tabInited.story)    { initMemoryBook();  initLetters();   initAlbum();   initVlog();   tabInited.story   = true }
   if (tab === 'life'     && !tabInited.life)     { initLife();        tabInited.life   = true }
 }
 
@@ -834,6 +886,7 @@ function tearDownActiveRoom() {
   teardownWrapped()
   teardownLocalCare()
   teardownAlbum()
+  teardownVlog()
   teardownStats()
   Object.keys(tabInited).forEach(k => tabInited[k] = false)
   lastPartnerOnline = null
@@ -950,6 +1003,7 @@ async function init() {
   initPolish()         // a11y, ESC handlers, focus management
   initI18n()           // locale detection + DOM translation
   initAnalytics()      // events tracking
+  initLegal()          // privacy policy modal + consent wiring
 
   // Whenever auth state flips (sign-in, sign-out), refresh the rooms list view
   onAuthChange(async () => {
@@ -962,6 +1016,10 @@ async function init() {
 
   // Decide what to show first
   $('loading').style.display = 'none'
+
+  // First-run consent + age gate — blocks until the user agrees.
+  await requireConsent()
+
   const activeCode = getActiveRoomCode()
   if (activeCode && configured) {
     // Try to restore the active room directly
@@ -1000,6 +1058,25 @@ window.app = {
   exportRoom: exportThisRoom,
   shareRoom,
 }
+
+// Delegated click handler so we can drop 'unsafe-inline' from the CSP.
+// HTML uses data-action="methodName" (+ optional data-arg) instead of onclick.
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action]')
+  if (!el) return
+  const action = el.dataset.action
+  const fn = window.app[action]
+  if (typeof fn !== 'function') return
+  e.preventDefault()
+  const rawArg = el.dataset.arg
+  let arg
+  if (rawArg !== undefined) {
+    arg = /^-?\d+(\.\d+)?$/.test(rawArg) ? Number(rawArg) : rawArg
+  }
+  if (action === 'switchTab') fn(el.dataset.tab || arg, el)
+  else if (arg !== undefined) fn(arg)
+  else fn()
+})
 
 // Prevent blank screen: if init throws, hide loading and surface error
 init().catch((e) => {

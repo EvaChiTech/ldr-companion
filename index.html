@@ -10,9 +10,6 @@
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♡</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#C4594A">
@@ -40,11 +37,11 @@
         <p class="hero-sub"><span data-i18n="hero_subtitle">Real-time connected. Thoughtfully crafted.</span><br><span data-i18n="hero_subtitle_line2">Your shared space across every mile.</span></p>
       </div>
       <div class="ob-cards">
-        <div class="ob-card" onclick="window.app.obShow('ob-create')">
+        <div class="ob-card" data-action="obShow" data-arg="ob-create">
           <h3 data-i18n="ob_create_title">Create</h3>
           <p data-i18n="ob_create_sub">Start a new shared room</p>
         </div>
-        <div class="ob-card" onclick="window.app.obShow('ob-join')">
+        <div class="ob-card" data-action="obShow" data-arg="ob-join">
           <h3 data-i18n="ob_join_title">Join</h3>
           <p data-i18n="ob_join_sub">Have a room code?</p>
         </div>
@@ -55,7 +52,7 @@
     </div>
 
     <div id="ob-create" style="display:none;">
-      <button class="btn-back" onclick="window.app.obShow('ob-land')" data-i18n="btn_back">← Back</button>
+      <button class="btn-back" data-action="obShow" data-arg="ob-land" data-i18n="btn_back">← Back</button>
       <h2 class="ob-title" data-i18n="ob_create_heading">Create your room</h2>
       <p class="ob-sub" data-i18n="ob_create_sub2">You'll get a code to share with the other person</p>
 
@@ -121,12 +118,12 @@
         <div class="field"><label data-i18n="ob_interests_label">Shared interests — for personalized date ideas</label>
           <input id="c-interests" type="text" data-i18n-placeholder="ob_interests_ph" placeholder="e.g. cooking, hiking, anime, jazz, K-drama, travel"></div>
       </div>
-      <button class="btn btn-primary btn-full" onclick="window.app.createRoom()" data-i18n="ob_create_btn">Create room →</button>
+      <button class="btn btn-primary btn-full" data-action="createRoom" data-i18n="ob_create_btn">Create room →</button>
       <div id="c-err" class="form-error" style="display:none;"></div>
     </div>
 
     <div id="ob-join" style="display:none;">
-      <button class="btn-back" onclick="window.app.obShow('ob-land')" data-i18n="btn_back">← Back</button>
+      <button class="btn-back" data-action="obShow" data-arg="ob-land" data-i18n="btn_back">← Back</button>
       <h2 class="ob-title" data-i18n="ob_join_heading">Join a room</h2>
       <p class="ob-sub" data-i18n="ob_join_sub2">Enter the code your partner shared</p>
       <div class="form-card">
@@ -135,7 +132,7 @@
           <input id="j-code" type="text" class="code-input" placeholder="AB3X7K2P" maxlength="8">
         </div>
       </div>
-      <button class="btn btn-primary btn-full" onclick="window.app.joinRoom()" data-i18n="ob_join_btn">Find room →</button>
+      <button class="btn btn-primary btn-full" data-action="joinRoom" data-i18n="ob_join_btn">Find room →</button>
       <div id="j-err" class="form-error" style="display:none;"></div>
     </div>
 
@@ -143,10 +140,10 @@
       <h2 class="ob-title" data-i18n="ob_pick_heading">Which one are you?</h2>
       <p class="ob-sub" data-i18n="ob_pick_sub">Select your profile to continue</p>
       <div class="ob-cards">
-        <div class="ob-card tall" onclick="window.app.pickPartner(1)">
+        <div class="ob-card tall" data-action="pickPartner" data-arg="1">
           <h3 id="pk-n1"></h3><p id="pk-tz1"></p>
         </div>
-        <div class="ob-card tall" onclick="window.app.pickPartner(2)">
+        <div class="ob-card tall" data-action="pickPartner" data-arg="2">
           <h3 id="pk-n2"></h3><p id="pk-tz2"></p>
         </div>
       </div>
@@ -167,7 +164,7 @@
           <div class="header-meta">
             <span class="header-days" id="hdr-days"></span>
             <span class="sep">·</span>
-            <span class="room-badge" onclick="window.app.copyCode()" id="room-badge">
+            <span class="room-badge" data-action="copyCode" id="room-badge">
               <span class="live-dot"></span>
               <span id="room-badge-text"></span>
             </span>
@@ -180,11 +177,11 @@
         <select id="lang-picker" class="lang-picker" aria-label="Language"></select>
         <button id="tour-toggle"    class="hdr-icon" type="button" title="Take the tour" aria-label="Tour">❔</button>
         <button id="dark-toggle"    class="hdr-icon" type="button" title="Dark mode"      aria-label="Dark mode">🌗</button>
-        <button id="export-toggle"  class="hdr-icon" type="button" title="Download all data from this room as JSON" aria-label="Export room" onclick="window.app.exportRoom()">⬇</button>
+        <button id="export-toggle"  class="hdr-icon" type="button" title="Download all data from this room as JSON" aria-label="Export room" data-action="exportRoom">⬇</button>
         <button id="account-toggle" class="hdr-icon" type="button" title="Sign in to sync rooms" aria-label="Account">🔓</button>
         <button id="notif-toggle"   class="hdr-icon" type="button" title="Enable notifications"   aria-label="Notifications">📵</button>
         <button id="sound-toggle"   class="hdr-icon" type="button" title="Sounds"                 aria-label="Sounds">🔔</button>
-        <button class="btn btn-ghost btn-sm" onclick="window.app.leaveRoom()" data-i18n="btn_leave">Leave</button>
+        <button class="btn btn-ghost btn-sm" data-action="leaveRoom" data-i18n="btn_leave">Leave</button>
       </div>
     </div>
   </header>
@@ -192,16 +189,16 @@
   <main class="main-content">
 
     <nav class="tabs" role="tablist" aria-label="App sections">
-      <button class="tab active" data-tab="home"     onclick="window.app.switchTab('home',this)"     data-i18n="tab_home">Home</button>
-      <button class="tab"        data-tab="chat"     onclick="window.app.switchTab('chat',this)">
+      <button class="tab active" data-tab="home"     data-action="switchTab"     data-i18n="tab_home">Home</button>
+      <button class="tab"        data-tab="chat"     data-action="switchTab">
         <span data-i18n="tab_chat">Chat</span><span id="chat-badge" class="tab-badge" style="display:none;"></span>
       </button>
-      <button class="tab"        data-tab="plans"    onclick="window.app.switchTab('plans',this)"    data-i18n="tab_plans">Plans</button>
-      <button class="tab"        data-tab="story"    onclick="window.app.switchTab('story',this)"    data-i18n="tab_story">Story</button>
-      <button class="tab"        data-tab="watch"    onclick="window.app.switchTab('watch',this)"    data-i18n="tab_watch">Watch</button>
-      <button class="tab"        data-tab="together" onclick="window.app.switchTab('together',this)" data-i18n="tab_together">Together</button>
-      <button class="tab"        data-tab="rituals"  onclick="window.app.switchTab('rituals',this)"  data-i18n="tab_rituals">Rituals</button>
-      <button class="tab"        data-tab="life"     onclick="window.app.switchTab('life',this)"     data-i18n="tab_life">Life</button>
+      <button class="tab"        data-tab="plans"    data-action="switchTab"    data-i18n="tab_plans">Plans</button>
+      <button class="tab"        data-tab="story"    data-action="switchTab"    data-i18n="tab_story">Story</button>
+      <button class="tab"        data-tab="watch"    data-action="switchTab"    data-i18n="tab_watch">Watch</button>
+      <button class="tab"        data-tab="together" data-action="switchTab" data-i18n="tab_together">Together</button>
+      <button class="tab"        data-tab="rituals"  data-action="switchTab"  data-i18n="tab_rituals">Rituals</button>
+      <button class="tab"        data-tab="life"     data-action="switchTab"     data-i18n="tab_life">Life</button>
     </nav>
 
     <!-- HOME -->
@@ -232,7 +229,7 @@
           <div class="slabel" data-i18n="home_visit_label">Next visit</div>
           <div class="cd-update">
             <input id="h-vi" type="date">
-            <button class="btn btn-secondary btn-sm" onclick="window.app.updateVisit()" data-i18n="visit_update">Update</button>
+            <button class="btn btn-secondary btn-sm" data-action="updateVisit" data-i18n="visit_update">Update</button>
           </div>
         </div>
         <div class="cd-big" id="h-cdnum"></div>
@@ -301,7 +298,7 @@
           <textarea id="h-mynote" data-i18n-placeholder="home_note_ph" placeholder="Write something to remember today by..."></textarea>
           <div class="note-footer">
             <span id="note-ok" class="save-ok" style="display:none;" data-i18n="home_note_saved">Saved ✓</span>
-            <button class="btn btn-secondary btn-sm" onclick="window.app.saveNote()" data-i18n="btn_save">Save</button>
+            <button class="btn btn-secondary btn-sm" data-action="saveNote" data-i18n="btn_save">Save</button>
           </div>
         </div>
         <div class="card note-card">
@@ -326,7 +323,7 @@
           <input id="chat-file" type="file" accept="image/*" style="display:none;">
           <input id="chat-inp" type="text" data-i18n-placeholder="chat_placeholder" placeholder="Type a message, paste an image, or drop a photo...">
           <button id="tone-btn" class="btn btn-ghost btn-sm" type="button" data-i18n-title="chat_tone_check" title="Check tone before sending">🪞</button>
-          <button class="btn btn-primary" onclick="window.app.sendMessage()" data-i18n="btn_send">Send</button>
+          <button class="btn btn-primary" data-action="sendMessage" data-i18n="btn_send">Send</button>
         </div>
       </div>
     </div>
@@ -337,8 +334,8 @@
         <div class="slabel" data-i18n="plans_ideas_label">Date ideas</div>
         <div class="input-row mb-14">
           <input id="ai-inp" type="text" data-i18n-placeholder="plans_ideas_ph" placeholder="Your interests: cooking, anime, jazz, stargazing...">
-          <button class="btn btn-primary btn-sm" onclick="window.app.genIdeas()" data-i18n="plans_ideas_btn">Generate →</button>
-          <button class="btn btn-secondary btn-sm" onclick="window.app.streamIdeas()" data-i18n="plans_ideas_btn_stream">Generate (stream)</button>
+          <button class="btn btn-primary btn-sm" data-action="genIdeas" data-i18n="plans_ideas_btn">Generate →</button>
+          <button class="btn btn-secondary btn-sm" data-action="streamIdeas" data-i18n="plans_ideas_btn_stream">Generate (stream)</button>
         </div>
 
         <div id="ai-loading" class="loading-text" style="display:none;">
@@ -364,7 +361,7 @@
         <div class="slabel" data-i18n="plans_bucket_label">Shared bucket list</div>
         <div class="input-row mb-14">
           <input id="bk-inp" type="text" data-i18n-placeholder="plans_bucket_ph" placeholder="A dream to do together...">
-          <button class="btn btn-secondary btn-sm" onclick="window.app.addBucket()" data-i18n="btn_add">Add →</button>
+          <button class="btn btn-secondary btn-sm" data-action="addBucket" data-i18n="btn_add">Add →</button>
         </div>
         <div id="bk-list"></div>
         <div id="bk-empty" class="empty-state center" style="display:none;" data-i18n="plans_bucket_empty">No items yet — start dreaming together</div>
@@ -390,7 +387,7 @@
         </div>
         <div class="field mb-14"><label data-i18n="story_milestone_note">Memory (optional)</label>
           <input id="ms-note" type="text" data-i18n-placeholder="story_milestone_note_ph" placeholder="A detail to hold onto..."></div>
-        <button class="btn btn-primary btn-full" onclick="window.app.addMilestone()" data-i18n="story_milestone_add">Add to our story →</button>
+        <button class="btn btn-primary btn-full" data-action="addMilestone" data-i18n="story_milestone_add">Add to our story →</button>
       </div>
       <div id="ms-timeline"></div>
       <div id="ms-empty" class="empty-state center" style="display:none;" data-i18n="story_empty">Your story is just beginning</div>
@@ -402,6 +399,18 @@
         </div>
         <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="story_album_sub">Every photo you've shared in chat, gathered into one place.</p>
         <div id="album-grid" class="album-grid"></div>
+      </div>
+
+      <div class="card mt-14">
+        <div class="dq-header">
+          <div class="slabel" data-i18n="story_vlogs_label">Vlogs</div>
+          <div class="vlog-head-actions">
+            <button id="vlog-refresh-btn" class="btn btn-ghost btn-sm" type="button" data-i18n="btn_refresh">Refresh</button>
+            <button id="vlog-open-btn" class="btn btn-primary btn-sm" type="button" data-i18n="story_vlogs_record">🎥 Record</button>
+          </div>
+        </div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="story_vlogs_sub">Tiny video diaries with your two timezones stamped right onto them. Both of you watch, either of you can download a TikTok-ready cut.</p>
+        <div id="vlog-grid" class="vlog-grid"></div>
       </div>
 
       <div class="card mt-14">
@@ -772,6 +781,206 @@
 </div>
 
 <div id="toast"></div>
+
+<!-- VLOG RECORDER (fullscreen, hidden until opened) -->
+<div id="vlog-recorder" class="vlog-recorder" data-phase="idle" data-orient="portrait" style="display:none;">
+  <div class="vlog-rec-topbar">
+    <button id="vlog-rec-close" class="vlog-rec-icon" type="button" aria-label="Close">✕</button>
+    <div class="vlog-rec-timer-wrap">
+      <span id="vlog-rec-timer" class="vlog-rec-timer">0:00</span>
+    </div>
+    <button id="vlog-rec-flip" class="vlog-rec-icon" type="button" aria-label="Flip camera">⤾</button>
+  </div>
+
+  <div class="vlog-rec-stage">
+    <video id="vlog-preview-video" class="vlog-rec-preview vlog-rec-only-idle" autoplay muted playsinline></video>
+    <video id="vlog-review-video"  class="vlog-rec-preview vlog-rec-only-review" playsinline></video>
+    <div id="vlog-live-watermark" class="vlog-live-watermark"></div>
+    <div class="vlog-rec-progress-track vlog-rec-only-recording">
+      <div id="vlog-rec-progress" class="vlog-rec-progress-fill"></div>
+    </div>
+    <div class="vlog-rec-duration-row vlog-rec-only-idle">
+      <div class="vlog-chip-group" data-group="duration" aria-label="Max recording length">
+        <button class="vlog-chip" data-val="30"  type="button">30s</button>
+        <button class="vlog-chip" data-val="60"  type="button">1m</button>
+        <button class="vlog-chip" data-val="180" type="button">3m</button>
+        <button class="vlog-chip" data-val="600" type="button">10m</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="vlog-rec-controls">
+    <div class="vlog-rec-only-idle">
+      <p id="vlog-rec-hint-text" class="vlog-rec-hint">Tap to record · up to 60 seconds · auto-stamped with both your times</p>
+      <button id="vlog-rec-start" class="vlog-rec-shutter" type="button" aria-label="Start recording"></button>
+    </div>
+    <div class="vlog-rec-only-recording">
+      <button id="vlog-rec-stop" class="vlog-rec-shutter recording" type="button" aria-label="Stop recording"></button>
+    </div>
+    <div class="vlog-rec-only-review vlog-rec-review-pane">
+      <textarea id="vlog-caption" class="vlog-caption-input" maxlength="240" placeholder="Add a caption (optional)…"></textarea>
+      <div class="vlog-rec-review-actions">
+        <button id="vlog-retake-btn" class="btn btn-ghost btn-sm" type="button">↺ Retake</button>
+        <button id="vlog-save-btn"   class="btn btn-primary btn-sm" type="button">Post to room ✨</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- VLOG PLAYER (fullscreen player + export) -->
+<div id="vlog-player" class="vlog-player" data-orient="portrait" style="display:none;">
+  <div id="vlog-player-backdrop" class="vlog-player-backdrop"></div>
+  <div class="vlog-player-shell">
+    <div class="vlog-player-stage">
+      <video id="vlog-player-video" class="vlog-player-video" controls playsinline></video>
+      <div id="vlog-player-watermark" class="vlog-live-watermark vlog-player-watermark"></div>
+    </div>
+    <div class="vlog-player-meta">
+      <div id="vlog-player-caption" class="vlog-player-caption"></div>
+      <div id="vlog-player-reply-meta" class="vlog-player-reply-meta"></div>
+
+      <details class="vlog-options">
+        <summary>Export options</summary>
+        <div class="vlog-option-row">
+          <span class="vlog-option-label">Watermark</span>
+          <div class="vlog-chip-group" data-group="watermark" aria-label="Watermark style">
+            <button class="vlog-chip" data-val="classic" type="button">Classic</button>
+            <button class="vlog-chip" data-val="minimal" type="button">Minimal</button>
+            <button class="vlog-chip" data-val="none"    type="button">None</button>
+          </div>
+        </div>
+        <div class="vlog-option-row">
+          <span class="vlog-option-label">End card</span>
+          <div class="vlog-chip-group" data-group="endcard" aria-label="End card">
+            <button class="vlog-chip" data-val="on"  type="button">On</button>
+            <button class="vlog-chip" data-val="off" type="button">Off</button>
+          </div>
+        </div>
+        <div id="vlog-option-duet-row" class="vlog-option-row" style="display:none;">
+          <span class="vlog-option-label">Duet layout</span>
+          <div class="vlog-chip-group" data-group="layout" aria-label="Duet layout">
+            <button class="vlog-chip" data-val="auto"    type="button">Auto</button>
+            <button class="vlog-chip" data-val="stacked" type="button">Stacked</button>
+            <button class="vlog-chip" data-val="side"    type="button">Side-by-side</button>
+            <button class="vlog-chip" data-val="pip"     type="button">Picture-in-picture</button>
+            <button class="vlog-chip" data-val="stitch"  type="button">Stitch</button>
+          </div>
+        </div>
+      </details>
+
+      <div class="vlog-player-actions">
+        <button id="vlog-reply-btn"  class="btn btn-secondary btn-sm" type="button" style="display:none;">💬 React with a video</button>
+        <button id="vlog-duet-btn"   class="btn btn-secondary btn-sm" type="button" style="display:none;">🎞 Export as duet</button>
+        <button id="vlog-export-btn" class="btn btn-primary btn-sm" type="button">⬇ Download for sharing</button>
+        <button id="vlog-delete-btn" class="btn btn-ghost   btn-sm" type="button" style="display:none;">Delete</button>
+        <button id="vlog-player-close" class="btn btn-ghost btn-sm" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONSENT + AGE GATE (first run) -->
+<div id="consent-modal" class="legal-modal" style="display:none;">
+  <div class="legal-card">
+    <div class="legal-title">Before you begin</div>
+    <p class="legal-intro">
+      LDR Companion stores your messages, notes, moods, photos, videos and other
+      shared content so two people can keep a private space together. Please
+      confirm the following:
+    </p>
+    <label class="consent-row">
+      <input type="checkbox" id="consent-age">
+      <span>I am at least 16 years old (or have the consent of a parent/guardian).</span>
+    </label>
+    <label class="consent-row">
+      <input type="checkbox" id="consent-terms">
+      <span>I have read and accept the <a href="#" data-open-privacy>Privacy Policy</a>.</span>
+    </label>
+    <button id="consent-agree" class="btn btn-primary btn-full" type="button" disabled>
+      Agree &amp; continue
+    </button>
+  </div>
+</div>
+
+<!-- PRIVACY POLICY -->
+<div id="privacy-modal" class="legal-modal" style="display:none;">
+  <div class="legal-card legal-card-scroll">
+    <div class="legal-head">
+      <div class="legal-title">Privacy Policy</div>
+      <button id="privacy-close" class="legal-close" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="legal-body">
+      <p><em>Last updated: 2026. This policy explains what LDR Companion ("the app")
+      collects, why, and the choices you have. The app operator ("we") is the
+      data controller — replace this line with your legal entity name and a
+      contact email before launch.</em></p>
+
+      <h3>1. What we collect</h3>
+      <ul>
+        <li><strong>Room content you create:</strong> chat messages, daily notes,
+        moods, milestones, dreams, letters, photos, vlogs (video + audio),
+        bucket-list items, calendar events, expenses and similar entries.</li>
+        <li><strong>Profile-ish data:</strong> the names and time zones/cities you
+        enter for each person, your relationship start date and visit dates.</li>
+        <li><strong>Account data:</strong> a device identity is created
+        automatically; if you choose to sync across devices we also store your
+        email address.</li>
+        <li><strong>Technical data:</strong> approximate location is inferred only
+        from the time zone you pick; we do not collect precise GPS location.</li>
+      </ul>
+
+      <h3>2. Why we process it (legal bases)</h3>
+      <p>To provide the app's core features — your consent (given on first run)
+      and the performance of our service to you. AI features (date ideas,
+      coaching, memory chapters, etc.) send the relevant room content to our
+      AI provider to generate a response.</p>
+
+      <h3>3. Sensitive content</h3>
+      <p>Moods, dream logs and relationship reflections can reveal sensitive
+      aspects of your life. We process them only to power the features you use,
+      never for advertising or profiling, and never sell them.</p>
+
+      <h3>4. Who else processes your data</h3>
+      <ul>
+        <li><strong>Supabase</strong> — database, authentication, file storage and
+        realtime sync.</li>
+        <li><strong>Anthropic</strong> — AI generation for the optional AI
+        features (receives only the content needed for that request).</li>
+        <li><strong>Vercel</strong> — application hosting and basic analytics.</li>
+      </ul>
+
+      <h3>5. Storage location &amp; retention</h3>
+      <p>Data is kept for as long as your room exists. Deleting your data (see
+      section 7) removes it immediately. Inactive rooms may be removed after a
+      prolonged period of inactivity.</p>
+
+      <h3>6. Security</h3>
+      <p>Access to room data is restricted by row-level security to the devices
+      that are members of that room. Transport is encrypted (HTTPS). No system
+      is perfectly secure — please use a strong, private room code.</p>
+
+      <h3>7. Your rights</h3>
+      <p>Depending on your jurisdiction (GDPR, UK GDPR, CCPA/CPRA, PIPA, APPI,
+      LGPD and others) you may have the right to access, correct, export or
+      delete your data, and to withdraw consent.</p>
+      <ul>
+        <li><strong>Export:</strong> use the in-app "Export room data" button.</li>
+        <li><strong>Delete:</strong> use "Delete all my data" in the account
+        menu — this erases every room you belong to, immediately and
+        permanently.</li>
+        <li>For other requests, contact the operator at the email above.</li>
+      </ul>
+
+      <h3>8. Children</h3>
+      <p>The app is not intended for children under 16. By using it you confirm
+      you meet the minimum age, or have parental/guardian consent where a lower
+      age applies.</p>
+
+      <h3>9. Changes</h3>
+      <p>We may update this policy; material changes will be surfaced in-app.</p>
+    </div>
+  </div>
+</div>
 
 <script type="module" src="/main.js"></script>
 </body>

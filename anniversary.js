@@ -46,13 +46,11 @@ async function fetchSurprise(milestone) {
   // Generate fresh
   const { data: recent } = await sb.from('milestones')
     .select('date,title,note').eq('room_id', state.room).order('date', { ascending: false }).limit(12)
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
   const { data, error } = await sb.functions.invoke('anniversary-surprise', {
     body: {
       n1: state.cfg.n1, n2: state.cfg.n2,
       days: milestone.days, since: state.cfg.since,
       milestoneLabel: milestone.label, recent: recent || [],
-      apiKey,
     },
   })
   if (error) throw error
