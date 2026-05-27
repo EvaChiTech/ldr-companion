@@ -1,31 +1,41 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import {
+  preflight, requirePost, checkBodySize,
+  requireUser, rateLimit, corsHeaders, json, clip,
+} from '../_shared/guard.ts'
+import { callAI, stripFence } from '../_shared/ai.ts'
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
-  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: CORS })
+  const pf = preflight(req); if (pf) return pf
+  const mn = requirePost(req); if (mn) return mn
+  const bs = checkBodySize(req, 16384); if (bs) return bs
+
+  const user = await requireUser(req); if (user instanceof Response) return user
+  const rl = await rateLimit(req, 'yearly-wrapped', { user, maxPerUser: 4, maxPerIp: 20 })
+  if (rl) return rl
+
+  const CORS = corsHeaders(req)
   try {
-    const { n1, n2, year, stats, topNote, topQuestion, topMilestone, topMood, apiKey } = await req.json()
-    const anthropicKey = apiKey || Deno.env.get('ANTHROPIC_API_KEY')
-    if (!anthropicKey) return new Response(JSON.stringify({ error: 'Connection key not configured' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
+    const body = await req.json()
+    const n1 = clip(body.n1, 60), n2 = clip(body.n2, 60)
+    const year = Number(body.year) || new Date().getFullYear()
+    const stats = body.stats || {}
+    const topNote      = clip(body.topNote, 400)
+    const topQuestion  = clip(body.topQuestion, 400)
+    const topMilestone = clip(body.topMilestone, 200)
+    const topMood      = clip(body.topMood, 60)
 
     const prompt = `Write a beautiful 'Wrapped' recap for ${n1} and ${n2}'s ${year}. Hand-craft 6 narrative slides covering different sides of their year. Use the data below — quote the actual phrases when you can. Warm, second-person ("you two"), no clichés.
 
 Stats:
-- ${stats?.messages ?? 0} messages exchanged
-- ${stats?.notes ?? 0} daily notes written
-- ${stats?.dreams ?? 0} dreams logged
-- ${stats?.questions_answered ?? 0} deep questions answered together
-- ${stats?.watch_minutes ?? 0} minutes watched together
-- ${stats?.moments ?? 0} moments saved to your story
-- ${stats?.care_pings ?? 0} care pings exchanged
-- ${stats?.reunions ?? 0} reunions logged
-- ${stats?.expenses ?? 0} shared expenses
+- ${Number(stats?.messages) || 0} messages exchanged
+- ${Number(stats?.notes) || 0} daily notes written
+- ${Number(stats?.dreams) || 0} dreams logged
+- ${Number(stats?.questions_answered) || 0} deep questions answered together
+- ${Number(stats?.watch_minutes) || 0} minutes watched together
+- ${Number(stats?.moments) || 0} moments saved to your story
+- ${Number(stats?.care_pings) || 0} care pings exchanged
+- ${Number(stats?.reunions) || 0} reunions logged
+- ${Number(stats?.expenses) || 0} shared expenses
 
 Most-revisited note: ${topNote || 'none'}
 Deepest question you answered: ${topQuestion || 'none'}
@@ -42,22 +52,11 @@ Return ONLY a JSON object with this exact shape:
   "closing": "<one final 2-sentence dedication addressed to both of you>"
 }`
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] }),
-    })
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '')
-      let msg = `Connection error ${res.status}`
-      try { msg = JSON.parse(errText)?.error?.message || msg } catch {}
-      return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
-    }
-    const data = await res.json()
-    const raw = (data.content || []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
-    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
-    return new Response(JSON.stringify(parsed), { headers: { ...CORS, 'Content-Type': 'application/json' } })
+    const r = await callAI({ prompt, maxTokens: 1500, model: 'gpt-4o', json: true })
+    if (!r.ok) return json({ error: r.message }, r.status, CORS)
+    try { return json(JSON.parse(stripFence(r.text)), 200, CORS) }
+    catch { return json({ error: 'Bad AI response' }, 502, CORS) }
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as any)?.message || 'Failed' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
+    return json({ error: (e as any)?.message || 'Failed' }, 500, CORS)
   }
 })

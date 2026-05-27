@@ -1,43 +1,40 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import {
+  preflight, requirePost, checkBodySize,
+  requireUser, rateLimit, corsHeaders, json, clip,
+} from '../_shared/guard.ts'
+import { callAI, stripFence } from '../_shared/ai.ts'
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
-  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: CORS })
-  try {
-    const { n1, n2, days, since, milestoneLabel, recent, apiKey } = await req.json()
-    const anthropicKey = apiKey || Deno.env.get('ANTHROPIC_API_KEY')
-    if (!anthropicKey) return new Response(JSON.stringify({ error: 'Connection key not configured' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
+  const pf = preflight(req); if (pf) return pf
+  const mn = requirePost(req); if (mn) return mn
+  const bs = checkBodySize(req, 32768); if (bs) return bs
 
-    const recentBlock = (recent && recent.length)
-      ? `\nRecent moments from their app:\n${recent.slice(0, 12).map((r: any) => `- ${r.date}: ${r.title}${r.note ? ' — ' + r.note : ''}`).join('\n')}`
+  const user = await requireUser(req); if (user instanceof Response) return user
+  const rl = await rateLimit(req, 'anniversary-surprise', { user, maxPerUser: 6, maxPerIp: 30 })
+  if (rl) return rl
+
+  const CORS = corsHeaders(req)
+  try {
+    const body = await req.json()
+    const n1 = clip(body.n1, 60), n2 = clip(body.n2, 60)
+    const days = Number(body.days) || 0
+    const since = clip(body.since, 20)
+    const milestoneLabel = clip(body.milestoneLabel, 80)
+    const recent = Array.isArray(body.recent) ? body.recent : []
+
+    const recentBlock = recent.length
+      ? `\nRecent moments from their app:\n${recent.slice(0, 12).map((r: any) => `- ${clip(r.date, 20)}: ${clip(r.title, 120)}${r.note ? ' — ' + clip(r.note, 240) : ''}`).join('\n')}`
       : ''
 
     const prompt = `Today is ${n1} and ${n2}'s **${milestoneLabel}** — ${days} days since ${since}. Write them a short, beautiful surprise: a 4–6 sentence message addressed to BOTH of them, in second person ("you two"). Reference something specific from their actual moments below if useful. No clichés.${recentBlock}
 
 Return ONLY JSON: {"title":"<3-5 word title for today>","message":"<the surprise message>","emoji":"<one perfect emoji>"}`
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 800, messages: [{ role: 'user', content: prompt }] }),
-    })
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '')
-      let msg = `Connection error ${res.status}`
-      try { msg = JSON.parse(errText)?.error?.message || msg } catch {}
-      return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
-    }
-    const data = await res.json()
-    const raw = (data.content || []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
-    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
-    return new Response(JSON.stringify(parsed), { headers: { ...CORS, 'Content-Type': 'application/json' } })
+    const r = await callAI({ prompt, maxTokens: 800, model: 'gpt-4o', json: true })
+    if (!r.ok) return json({ error: r.message }, r.status, CORS)
+    try { return json(JSON.parse(stripFence(r.text)), 200, CORS) }
+    catch { return json({ error: 'Bad AI response' }, 502, CORS) }
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as any)?.message || 'Failed' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
+    return json({ error: (e as any)?.message || 'Failed' }, 500, CORS)
   }
 })

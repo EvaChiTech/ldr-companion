@@ -13,7 +13,6 @@ export default async function handler(req: Request) {
       tz2,
       since,
       interests,
-      apiKey,
     } = await req.json()
 
     if (!n1 || !n2 || !tz1 || !tz2 || !since) {
@@ -26,7 +25,7 @@ export default async function handler(req: Request) {
     // Supabase Edge runtime provides env via `Deno.env`.
     // Some IDEs don't typecheck Edge globals; at runtime this works.
     // @ts-ignore
-    const anthropicKey = apiKey || Deno.env.get('ANTHROPIC_API_KEY')
+    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
 
     if (!anthropicKey) {
       return new Response(

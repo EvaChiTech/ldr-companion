@@ -1,33 +1,41 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import {
+  preflight, requirePost, checkBodySize,
+  requireUser, rateLimit, corsHeaders, json, clip,
+} from '../_shared/guard.ts'
+import { callAI, stripFence } from '../_shared/ai.ts'
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
-  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: CORS })
+  const pf = preflight(req); if (pf) return pf
+  const mn = requirePost(req); if (mn) return mn
+  const bs = checkBodySize(req, 32768); if (bs) return bs
+
+  const user = await requireUser(req); if (user instanceof Response) return user
+  const rl = await rateLimit(req, 'pattern-coach', { user, maxPerUser: 12, maxPerIp: 60 })
+  if (rl) return rl
+
+  const CORS = corsHeaders(req)
   try {
-    const { n1, n2, moods, notes, messageDays, sleepEvents, apiKey } = await req.json()
-    const anthropicKey = apiKey || Deno.env.get('ANTHROPIC_API_KEY')
-    if (!anthropicKey) return new Response(JSON.stringify({ error: 'Connection key not configured' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
+    const body = await req.json()
+    const n1 = clip(body.n1, 60), n2 = clip(body.n2, 60)
+    const moods       = Array.isArray(body.moods) ? body.moods : []
+    const notes       = Array.isArray(body.notes) ? body.notes : []
+    const messageDays = Array.isArray(body.messageDays) ? body.messageDays : []
+    const sleepEvents = Array.isArray(body.sleepEvents) ? body.sleepEvents : []
 
     const summary = (arr: any[], fmt: (x: any) => string, max = 30) =>
-      Array.isArray(arr) ? arr.slice(0, max).map(fmt).join('\n') : ''
+      arr.slice(0, max).map(fmt).join('\n')
 
     const corpus = [
       `Mood entries (newest first):`,
-      summary(moods, m => `- ${m.date} (${m.who}): ${m.mood}`),
+      summary(moods, (m: any) => `- ${clip(m.date, 20)} (${clip(m.who, 30)}): ${clip(m.mood, 60)}`),
       ``,
       `Note entries:`,
-      summary(notes, n => `- ${n.date} (${n.who}): ${n.content?.slice(0, 80) || ''}`, 25),
+      summary(notes, (n: any) => `- ${clip(n.date, 20)} (${clip(n.who, 30)}): ${clip(n.content, 80)}`, 25),
       ``,
-      `Daily message volume (last 14 days): ${(messageDays || []).map((d: any) => `${d.date}=${d.count}`).join(', ')}`,
+      `Daily message volume (last 14 days): ${messageDays.slice(0, 14).map((d: any) => `${clip(d.date, 20)}=${Number(d.count) || 0}`).join(', ')}`,
       ``,
       `Sleep timing samples:`,
-      summary(sleepEvents, s => `- ${s.date} (${s.who}): bed ${s.goodnight_at || '?'}`, 14),
+      summary(sleepEvents, (s: any) => `- ${clip(s.date, 20)} (${clip(s.who, 30)}): bed ${clip(s.goodnight_at, 30) || '?'}`, 14),
     ].join('\n')
 
     const prompt = `You are a kind, observant relationship companion for ${n1} and ${n2}. From the data below, surface ONE gentle, specific noticing they could act on this week.
@@ -44,22 +52,11 @@ ${corpus}
 
 Return ONLY JSON: {"insight":"<the noticing>","nudge":"<one tiny optional suggestion>"}`
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 500, messages: [{ role: 'user', content: prompt }] }),
-    })
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '')
-      let msg = `Connection error ${res.status}`
-      try { msg = JSON.parse(errText)?.error?.message || msg } catch {}
-      return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
-    }
-    const data = await res.json()
-    const raw = (data.content || []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
-    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
-    return new Response(JSON.stringify(parsed), { headers: { ...CORS, 'Content-Type': 'application/json' } })
+    const r = await callAI({ prompt, maxTokens: 500, json: true })
+    if (!r.ok) return json({ error: r.message }, r.status, CORS)
+    try { return json(JSON.parse(stripFence(r.text)), 200, CORS) }
+    catch { return json({ error: 'Bad AI response' }, 502, CORS) }
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as any)?.message || 'Failed' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
+    return json({ error: (e as any)?.message || 'Failed' }, 500, CORS)
   }
 })
