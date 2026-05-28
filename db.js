@@ -99,6 +99,19 @@ export async function joinRoom(code, partnerIdx) {
   return data
 }
 
+// Backfill helper: re-affirm membership for every room the client thinks it
+// belongs to. join_room is idempotent (ON CONFLICT DO UPDATE), so this is
+// safe to call on every boot. Heals the post-cutover gap where pre-existing
+// rooms had no room_members rows — without it, storage writes get a 400.
+export async function ensureMembership(rooms) {
+  if (!sb || !Array.isArray(rooms) || !rooms.length) return
+  await Promise.all(rooms.map(async r => {
+    if (!r?.code || ![1, 2].includes(r.me)) return
+    try { await sb.rpc('join_room', { p_code: r.code, p_partner_idx: r.me }) }
+    catch (e) { console.warn('[db] ensureMembership skipped', r.code, e?.message || e) }
+  }))
+}
+
 // delete_my_data — GDPR Art. 17 / CCPA erasure. Schedules every room
 // the caller belongs to for permanent deletion in 30 days. Either partner
 // can cancel during that window via cancelPendingDeletion(roomId).
