@@ -1012,6 +1012,12 @@ async function init() {
 
   // Load rooms membership + initialize the rooms-list screen
   loadRoomsList()
+  // Re-affirm room_members for every room we think we're in. Anonymous
+  // sessions can rotate auth.uid() across devices/cookie clears, and rooms
+  // created pre-cutover have no room_members rows at all. join_room is
+  // idempotent so this is cheap on every boot. Await it because the
+  // active-room restore below relies on rooms RLS, which checks membership.
+  if (configured) await db.ensureMembership(state.rooms)
   if (configured) await initRoomsList(switchToRoom)
 
   // Decide what to show first
