@@ -43,16 +43,16 @@ VITE_SUPABASE_URL = https://YOUR_PROJECT_ID.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY = sb_publishable_YOUR_KEY
 ```
 
-⚠️ **The Anthropic API key is NOT a Vercel variable.**
+⚠️ **The OpenAI API key is NOT a Vercel variable.**
 A `VITE_`-prefixed key is bundled into the public client JS and would be
 readable by anyone who visits the site. The key lives only as a Supabase
 Edge Function secret:
 
 ```
-supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+supabase secrets set OPENAI_API_KEY=sk-...
 ```
 
-Get a key at [console.anthropic.com](https://console.anthropic.com) if you
+Get a key at [platform.openai.com](https://platform.openai.com/api-keys) if you
 don't have one. Also set, on the same Supabase secrets, an `ALLOWED_ORIGINS`
 value (comma-separated list of your deployed origins) to lock down CORS.
 
@@ -90,8 +90,8 @@ value (comma-separated list of your deployed origins) to lock down CORS.
 
 ### Issue: "AI date ideas not working"
 **Fix:** 
-1. Verify the `ANTHROPIC_API_KEY` secret is set on your Supabase Edge Functions (`supabase secrets list`)
-2. Ensure your Anthropic account has credits/quota
+1. Verify the `OPENAI_API_KEY` secret is set on your Supabase Edge Functions (`supabase secrets list`)
+2. Ensure your OpenAI account has credit balance > $0 (Settings → Billing)
 3. Check the browser console (F12) and the Supabase Edge Function logs for errors
 
 ## 📝 Next Steps
