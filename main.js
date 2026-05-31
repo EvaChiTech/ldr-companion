@@ -233,8 +233,23 @@ async function pickPartner(p) {
       const room = await db.joinRoom(state.room, p)
       if (room) state.cfg = room
     } catch (e) {
-      toast('Could not join room: ' + (e?.message || 'unknown error'))
-      return
+      // Translate raw Postgres errors into user-readable messages.
+      // The most common one — duplicate (room_id, user_id) on rejoin —
+      // is harmless and means we're already a member; fall through.
+      const msg = String(e?.message || '')
+      if (/duplicate key.*room_members_pkey/i.test(msg)) {
+        // Already a member; treat as success.
+      } else if (/duplicate key.*partner_idx/i.test(msg)) {
+        toast('That partner slot has been taken on another device. Try the other one.')
+        return
+      } else if (/room not found/i.test(msg)) {
+        toast('Room not found. Double-check the code with your partner.')
+        return
+      } else {
+        toast('Could not join room. Please try again in a moment.')
+        console.warn('[main] joinRoom failed:', msg)
+        return
+      }
     }
   }
   upsertRoomMembership({
