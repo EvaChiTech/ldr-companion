@@ -28,12 +28,19 @@ async function listCapsules() {
 }
 
 async function uploadCapsule(blob, label) {
+  if (!state.room) throw new Error('No room selected — refresh and try again.')
   const ext = (blob.type.includes('mp4') ? 'mp4' : blob.type.includes('ogg') ? 'ogg' : 'webm')
   const path = `${state.room}/${Date.now()}-p${state.me}.${ext}`
   const { error: upErr } = await sb.storage.from('sound-capsules').upload(path, blob, {
     contentType: blob.type, upsert: true,
   })
-  if (upErr) throw upErr
+  if (upErr) {
+    console.error('[sounds] uploadCapsule failed', {
+      message: upErr.message, status: upErr.status ?? upErr.statusCode,
+      path, size: blob.size, contentType: blob.type,
+    })
+    throw upErr
+  }
   const { data } = sb.storage.from('sound-capsules').getPublicUrl(path)
   const audio_url = data.publicUrl
   const { error } = await sb.from('sound_capsules').insert({

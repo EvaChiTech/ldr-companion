@@ -254,16 +254,32 @@ async function flipCamera() {
 }
 
 function explainError(e) {
-  const msg = String(e?.message || e?.error || e || '').toLowerCase()
-  if (msg.includes('bucket') && msg.includes('not found'))    return { code: 'no_bucket', user: 'Storage bucket "vlogs" is missing. Run the SQL migration in Supabase (schema.sql, "VLOGS — Storage bucket" block).' }
-  if (msg.includes('row-level security') || msg.includes('rls'))
-                                                              return { code: 'rls',        user: 'Storage permissions blocked the upload. Re-run schema.sql to create the vlogs storage policies.' }
-  if (msg.includes('relation') && msg.includes('vlogs'))      return { code: 'no_table',   user: '"vlogs" table is missing. Run the schema.sql migration in your Supabase SQL editor.' }
-  if (msg.includes('column') && msg.includes('vlogs'))        return { code: 'bad_column', user: 'Database column mismatch. Re-run schema.sql to apply the latest migration.' }
-  if (msg.includes('permission denied'))                      return { code: 'perm',       user: 'Permission denied — check Supabase RLS policies for the vlogs table and bucket.' }
-  if (msg.includes('failed to fetch') || msg.includes('network'))
-                                                              return { code: 'network',    user: 'Network error — check your connection.' }
-  return { code: 'unknown', user: e?.message || 'Upload failed (see console for details).' }
+  const msg    = String(e?.message || e?.error || e || '').toLowerCase()
+  const status = e?.status ?? e?.statusCode ?? e?.error?.statusCode
+  // Order matters: most specific patterns first.
+  if (msg.includes('video is too large') || msg.includes('max 500 mb'))
+    return { code: 'too_big',    user: e.message }
+  if (msg.includes('unsupported video format'))
+    return { code: 'bad_mime',   user: e.message }
+  if (msg.includes('no room selected'))
+    return { code: 'no_room',    user: 'Lost track of your room — please reload and try again.' }
+  if (status === 401 || msg.includes('jwt') || msg.includes('unauthorized'))
+    return { code: 'auth',       user: 'Session expired. Please reload the page and try again.' }
+  if (status === 413 || msg.includes('payload too large'))
+    return { code: 'too_big',    user: 'Video is too large for the server. Record a shorter clip.' }
+  if (msg.includes('row-level security') || msg.includes('rls') || msg.includes('violates row-level'))
+    return { code: 'rls',        user: 'You don’t have permission to post here. Try leaving and rejoining the room.' }
+  if (msg.includes('bucket') && msg.includes('not found'))
+    return { code: 'no_bucket',  user: 'Storage isn’t configured yet. Please contact support.' }
+  if (msg.includes('failed to fetch') || msg.includes('network') || msg.includes('networkerror'))
+    return { code: 'network',    user: 'Network hiccup. Check your connection and try again.' }
+  if (status >= 500)
+    return { code: 'server',     user: 'Server error — try again in a minute.' }
+  return {
+    code: 'unknown',
+    // Show a sanitized snippet of the real error so users can describe it.
+    user: 'Upload failed. ' + (e?.message ? '(' + String(e.message).slice(0, 120) + ')' : 'See console for details.'),
+  }
 }
 
 async function savePostedVlog() {
