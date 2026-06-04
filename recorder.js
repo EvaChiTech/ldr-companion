@@ -45,12 +45,19 @@ export function cancelRecording() {
 
 // Upload a recorded blob to the public 'voice-notes' bucket and return the URL.
 export async function uploadVoiceNote(sb, blob, { roomId, questionId, partnerIdx }) {
+  if (!roomId) throw new Error('No room selected — refresh and try again.')
   const ext = (blob.type.includes('mp4') ? 'mp4' : blob.type.includes('ogg') ? 'ogg' : 'webm')
   const path = `${roomId}/${questionId}-p${partnerIdx}-${Date.now()}.${ext}`
   const { error } = await sb.storage.from('voice-notes').upload(path, blob, {
     contentType: blob.type, upsert: true,
   })
-  if (error) throw error
+  if (error) {
+    console.error('[recorder] uploadVoiceNote failed', {
+      message: error.message, status: error.status ?? error.statusCode,
+      path, size: blob.size, contentType: blob.type,
+    })
+    throw error
+  }
   const { data } = sb.storage.from('voice-notes').getPublicUrl(path)
   return data.publicUrl
 }

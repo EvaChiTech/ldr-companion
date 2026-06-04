@@ -207,9 +207,15 @@ async function createRoom() {
 }
 
 async function joinRoom() {
-  const code = $('j-code').value.trim().toUpperCase()
+  // Normalize the partner's input the same way createRoom normalizes its
+  // custom-code input (uppercase + strip everything outside A-Z 0-9 _ -),
+  // otherwise a code containing characters the keyboard auto-inserted
+  // (curly quotes, em-dashes, accidental spaces) becomes unjoinable. The
+  // minimum length must also match createRoom's, otherwise short custom
+  // codes like "AEIOU" can be created but never joined.
+  const code = ($('j-code').value || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '')
   const err = $('j-err')
-  if (code.length < 6) { err.textContent = 'Please enter a valid room code.'; err.style.display = 'block'; return }
+  if (code.length < 4) { err.textContent = 'Please enter a valid room code (4+ characters).'; err.style.display = 'block'; return }
   if (!configured)     { err.textContent = 'Connection not configured — add your project keys to .env first.'; err.style.display = 'block'; return }
 
   try {

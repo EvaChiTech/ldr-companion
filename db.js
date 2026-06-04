@@ -379,32 +379,51 @@ const MAX_VLOG_BYTES  = 524288000  // 500 MB
 const MAX_IMAGE_BYTES = 10485760   // 10 MB
 const ALLOWED_VLOG_TYPES  = ['video/webm', 'video/mp4']
 
+// Dump everything we can extract from a Supabase storage error so end
+// users (and us) can tell network-vs-auth-vs-policy at a glance.
+function logStorageError(tag, e, ctx = {}) {
+  try {
+    console.error(`[db] ${tag} failed`, {
+      message:    e?.message || String(e),
+      name:       e?.name,
+      status:     e?.status ?? e?.statusCode ?? e?.error?.statusCode,
+      statusText: e?.statusText,
+      error:      e?.error,
+      hint:       e?.hint,
+      details:    e?.details,
+      ...ctx,
+    })
+  } catch { console.error(`[db] ${tag} failed`, e) }
+}
+
 // ── VLOGS ──────────────────────────────────────────────────
 export async function uploadVlog(blob, { partnerIdx, ext = 'webm' }) {
   // Strip codec params (e.g. "video/webm;codecs=vp9,opus") — Supabase Storage
   // wants a bare MIME type in the Content-Type header.
   const contentType = (blob.type || 'video/webm').split(';')[0].trim() || 'video/webm'
   if (blob.size > MAX_VLOG_BYTES) {
-    throw new Error('Video is too large (max 500 MB) — record a shorter clip.')
+    throw new Error(`Video is too large (${(blob.size / 1048576).toFixed(1)} MB, max 500 MB). Record a shorter clip.`)
   }
   if (!ALLOWED_VLOG_TYPES.includes(contentType)) {
-    throw new Error(`Unsupported video format: ${contentType}`)
+    throw new Error(`Unsupported video format: ${contentType}. Your device records in this codec — try recording with a different browser.`)
   }
+  if (!state.room) throw new Error('No room selected — refresh and try again.')
   const path = `${state.room}/${Date.now()}-p${partnerIdx}.${ext}`
   const { error } = await sb.storage.from('vlogs').upload(path, blob, {
     contentType, upsert: true,
   })
-  if (error) { console.error('[db] uploadVlog failed', error); throw error }
+  if (error) { logStorageError('uploadVlog', error, { path, size: blob.size, contentType }); throw error }
   const { data } = sb.storage.from('vlogs').getPublicUrl(path)
   return data.publicUrl
 }
 
 export async function uploadVlogThumb(blob, partnerIdx) {
+  if (!state.room) throw new Error('No room selected — refresh and try again.')
   const path = `${state.room}/${Date.now()}-p${partnerIdx}-thumb.jpg`
   const { error } = await sb.storage.from('vlogs').upload(path, blob, {
     contentType: 'image/jpeg', upsert: true,
   })
-  if (error) { console.error('[db] uploadVlogThumb failed', error); throw error }
+  if (error) { logStorageError('uploadVlogThumb', error, { path, size: blob.size }); throw error }
   const { data } = sb.storage.from('vlogs').getPublicUrl(path)
   return data.publicUrl
 }
