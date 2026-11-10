@@ -11,6 +11,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♡</text></svg>">
 <link rel="stylesheet" href="/styles.css">
+<!-- Feature styles load after the base sheet so their cascade order is unchanged -->
+<link rel="stylesheet" href="/styles/features.css">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#C4594A">
 </head>
@@ -46,6 +48,16 @@
           <p data-i18n="ob_join_sub">Have a room code?</p>
         </div>
       </div>
+      <!-- A visitor arriving alone can't experience a two-sided product.
+           This gives them the whole thing with a simulated partner. -->
+      <div class="demo-row">
+        <a class="demo-cta" href="?demo=1">
+          <span class="demo-cta-ico" data-icon="sparkle"></span>
+          <span data-i18n="demo_cta">See it with a partner — live demo</span>
+        </a>
+        <p class="demo-note" data-i18n="demo_note">No account. Nothing saved.</p>
+      </div>
+
       <div id="config-warn" class="notice warn" style="display:none;">
         <strong data-i18n="ob_setup_needed">⚠ Setup needed:</strong> <span data-i18n="ob_setup_body">Copy .env.example → .env and fill in your project keys. See README.md.</span>
       </div>
@@ -189,17 +201,26 @@
   <main class="main-content">
 
     <nav class="tabs" role="tablist" aria-label="App sections">
-      <button class="tab active" data-tab="home"     data-action="switchTab"     data-i18n="tab_home">Home</button>
-      <button class="tab"        data-tab="chat"     data-action="switchTab">
-        <span data-i18n="tab_chat">Chat</span><span id="chat-badge" class="tab-badge" style="display:none;"></span>
+      <button class="tab active" data-tab="home" data-action="switchTab" role="tab" aria-selected="true">
+        <span class="tab-ico" data-icon="home"></span><span class="tab-txt" data-i18n="tab_home">Home</span>
       </button>
-      <button class="tab"        data-tab="plans"    data-action="switchTab"    data-i18n="tab_plans">Plans</button>
-      <button class="tab"        data-tab="story"    data-action="switchTab"    data-i18n="tab_story">Story</button>
-      <button class="tab"        data-tab="watch"    data-action="switchTab"    data-i18n="tab_watch">Watch</button>
-      <button class="tab"        data-tab="together" data-action="switchTab" data-i18n="tab_together">Together</button>
-      <button class="tab"        data-tab="rituals"  data-action="switchTab"  data-i18n="tab_rituals">Rituals</button>
-      <button class="tab"        data-tab="life"     data-action="switchTab"     data-i18n="tab_life">Life</button>
+      <button class="tab" data-tab="chat" data-action="switchTab" role="tab" aria-selected="false">
+        <span class="tab-ico" data-icon="chat"></span><span class="tab-txt" data-i18n="tab_chat">Chat</span>
+        <span id="chat-badge" class="tab-badge" style="display:none;"></span>
+      </button>
+      <button class="tab" data-tab="together" data-action="switchTab" role="tab" aria-selected="false">
+        <span class="tab-ico" data-icon="together"></span><span class="tab-txt" data-i18n="tab_together">Together</span>
+      </button>
+      <button class="tab" data-tab="story" data-action="switchTab" role="tab" aria-selected="false">
+        <span class="tab-ico" data-icon="story"></span><span class="tab-txt" data-i18n="tab_story">Story</span>
+      </button>
+      <button class="tab" data-tab="life" data-action="switchTab" role="tab" aria-selected="false">
+        <span class="tab-ico" data-icon="life"></span><span class="tab-txt" data-i18n="tab_life">Life</span>
+      </button>
     </nav>
+
+    <!-- Sub-navigation for grouped sections; hidden when a tab has only one panel -->
+    <div id="subnav" class="subnav" role="tablist" aria-label="Section" hidden></div>
 
     <!-- HOME -->
     <div id="tab-home" class="tab-panel">
@@ -221,6 +242,38 @@
             <div class="clock-date" id="h-date2"></div>
             <div class="clock-city" id="h-city2"></div>
           </div>
+        </div>
+        <div class="clock-foot">
+          <button id="tv-open" class="tv-open" data-i18n-title="tv_open_title" title="Change where you are">📍 Set your location</button>
+        </div>
+      </div>
+
+      <!-- Travel — change your own location whenever you move -->
+      <div id="tv-panel" class="tv-panel hidden" role="dialog" aria-modal="true" aria-labelledby="tv-title">
+        <div class="tv-sheet">
+          <div class="tv-head">
+            <h3 id="tv-title" class="tv-title" data-i18n="tv_title">Where are you?</h3>
+            <button id="tv-close" class="btn btn-ghost btn-sm" data-i18n="tv_close">Close</button>
+          </div>
+          <p class="tv-sub" data-i18n="tv_sub">Only your own side changes. Their clocks update straight away.</p>
+          <input id="tv-search" type="text" autocomplete="off" spellcheck="false"
+                 data-i18n-placeholder="tv_search_ph" placeholder="Search a city or country…">
+          <div id="tv-err" class="tv-err"></div>
+          <div id="tv-list" class="tv-list"></div>
+        </div>
+      </div>
+
+      <!-- Glance — the newest photo from their side -->
+      <div class="card gl-card hidden" id="gl-card">
+        <div class="slabel" data-i18n="gl_label">From their side</div>
+        <div id="gl-empty" class="gl-empty" data-i18n="gl_empty">No photos from them yet. Anything they send in Chat shows up here.</div>
+        <div id="gl-stage" class="gl-stage hidden">
+          <img id="gl-img" class="gl-img" alt="" loading="lazy">
+          <div class="gl-meta">
+            <span id="gl-who" class="gl-who"></span>
+            <span id="gl-when" class="gl-when"></span>
+          </div>
+          <p id="gl-caption" class="gl-caption"></p>
         </div>
       </div>
 
@@ -261,7 +314,17 @@
 
       <div id="stats-card" class="card stats-card" style="display:none;"></div>
 
-      <div class="card reunion-card">
+      <!-- Progressive disclosure: Home stays glanceable; reflective tools are one tap away.
+           These three are plain DOM (no canvas/measurement), so staying collapsed
+           at init cannot mis-render them. -->
+      <details class="disclosure" id="home-more">
+        <summary class="disclosure-head">
+          <span class="disclosure-ico" data-icon="sparkle"></span>
+          <span data-i18n="home_more">Moods, reunions & noticings</span>
+          <span class="disclosure-chev" data-icon="chevron"></span>
+        </summary>
+        <div class="disclosure-body">
+<div class="card reunion-card">
         <div class="slabel" data-i18n="home_reunion_card">In the same place?</div>
         <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="home_reunion_sub">Tap when you're physically together. Distance widgets dim, in-person tools come alive.</p>
         <button id="reunion-start" class="btn btn-primary btn-sm" data-i18n="home_reunion_btn">💫 Begin reunion mode</button>
@@ -293,7 +356,10 @@
       </div>
 
       <div class="grid-2">
-        <div class="card note-card">
+        </div>
+      </details>
+
+<div class="card note-card">
           <div class="slabel" id="note-my-lbl"></div>
           <textarea id="h-mynote" data-i18n-placeholder="home_note_ph" placeholder="Write something to remember today by..."></textarea>
           <div class="note-footer">
@@ -357,6 +423,35 @@
         <div id="hm-out" class="hm-grid"></div>
       </div>
 
+      <!-- Wander — land somewhere in the world together -->
+      <div class="card" style="margin-top:14px;" id="wd-card">
+        <div class="slabel" data-i18n="wd_label">Wander</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="wd_sub">Spin and you both land in the same place. Say whether you'd go — if you both say yes, it joins your bucket list.</p>
+
+        <button id="wd-spin" class="btn btn-primary btn-sm" data-i18n="wd_spin">Take us somewhere ✈</button>
+
+        <div id="wd-empty" class="wd-empty" data-i18n="wd_empty">Nowhere yet. Spin and you'll both land together.</div>
+
+        <div id="wd-stage" class="wd-stage hidden">
+          <div id="wd-photo" class="wd-photo" role="img" aria-label="Photo of the place"></div>
+          <div class="wd-body">
+            <div class="wd-head">
+              <h4 id="wd-name" class="wd-name"></h4>
+              <span id="wd-country" class="wd-country"></span>
+            </div>
+            <p id="wd-blurb" class="wd-blurb"></p>
+            <div id="wd-clocks" class="wd-clocks"></div>
+            <div class="wd-vote-row">
+              <button id="wd-yes" class="wd-vote" data-i18n="wd_yes">I'd go 💞</button>
+              <button id="wd-no"  class="wd-vote" data-i18n="wd_no">Not for me</button>
+            </div>
+            <div id="wd-votes" class="wd-votes"></div>
+            <div id="wd-match" class="wd-match"></div>
+            <button id="wd-save" class="btn btn-secondary btn-sm hidden" data-i18n="wd_save">Add to bucket list</button>
+          </div>
+        </div>
+      </div>
+
       <div class="card" style="margin-top:14px;">
         <div class="slabel" data-i18n="plans_bucket_label">Shared bucket list</div>
         <div class="input-row mb-14">
@@ -411,6 +506,37 @@
         </div>
         <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="story_vlogs_sub">Tiny video diaries with your two timezones stamped right onto them. Both of you watch, either of you can download a TikTok-ready cut.</p>
         <div id="vlog-grid" class="vlog-grid"></div>
+      </div>
+
+      <!-- Day in the Life — hourly six-second clips, played back as one reel -->
+      <div class="card mt-14" id="dl-card">
+        <div class="slabel" data-i18n="dl_label">Day in the life</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="dl_sub">Every hour, film six seconds of whatever you're doing. At the end of the day it plays back as one reel — just for the two of you.</p>
+
+        <div id="dl-hint" class="dl-hint hidden" data-i18n="dl_hint">It's a new hour — what are you up to?</div>
+
+        <div class="together-actions">
+          <button id="dl-rec"  class="btn btn-primary   btn-sm" data-i18n="dl_rec">Film six seconds</button>
+          <button id="dl-ping" class="btn btn-secondary btn-sm" data-i18n="dl_ping">Nudge me hourly</button>
+          <button id="dl-play" class="btn btn-ghost     btn-sm hidden" data-i18n="dl_play">Play the day</button>
+        </div>
+
+        <div id="dl-preview-wrap" class="dl-preview-wrap hidden">
+          <video id="dl-preview" class="dl-preview" playsinline muted></video>
+          <span id="dl-count" class="dl-count hidden"></span>
+        </div>
+
+        <div id="dl-status" class="dl-status"></div>
+        <div id="dl-err" class="dl-err"></div>
+        <div id="dl-list" class="dl-list"></div>
+
+        <div id="dl-reel-wrap" class="dl-reel-wrap hidden">
+          <video id="dl-reel" class="dl-reel" playsinline controls></video>
+          <div class="dl-reel-bar">
+            <span id="dl-reel-label" class="dl-reel-label"></span>
+            <button id="dl-reel-close" class="btn btn-ghost btn-sm" data-i18n="dl_reel_close">Close</button>
+          </div>
+        </div>
       </div>
 
       <div class="card mt-14">
@@ -495,6 +621,32 @@
         </div>
       </div>
 
+      <!-- In-app co-watch: one of you loads it, both of you watch -->
+      <div class="card mt-14" id="cw-card">
+        <div class="slabel" data-i18n="cw_label">Stream to both of us</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="cw_sub">Pick a video on your device and it plays for both of you, live. Only one of you needs the file.</p>
+
+        <div id="cw-theater" class="cw-theater" style="display:none;"></div>
+
+        <div class="input-row mb-14">
+          <button id="cw-file-btn"   class="btn btn-primary   btn-sm" data-i18n="cw_file_btn">Choose a video…</button>
+          <button id="cw-screen-btn" class="btn btn-secondary btn-sm" data-i18n="cw_screen_btn">Share a screen</button>
+          <button id="cw-stop-btn"   class="btn btn-ghost     btn-sm" style="display:none;" data-i18n="cw_stop_btn">Stop sharing</button>
+          <input id="cw-file" type="file" accept="video/*" style="display:none;">
+        </div>
+
+        <div id="cw-status" class="cw-status cw-idle" aria-live="polite"></div>
+
+        <div id="cw-empty" class="cw-empty" data-i18n="cw_empty">Nothing playing yet. Choose a video and your partner sees it straight away.</div>
+
+        <div id="cw-stage" class="cw-stage" style="display:none;">
+          <video id="cw-video" class="cw-video" playsinline></video>
+          <button id="cw-join-btn" class="btn btn-primary btn-sm cw-join" style="display:none;" data-i18n="cw_join_btn">Start watching</button>
+        </div>
+
+        <p class="cw-note" id="cw-note" data-i18n="cw_note">Sends peer-to-peer between your two browsers. Subscription services like Netflix are protected and come through black — use the extension for those, where you each play your own copy.</p>
+      </div>
+
       <div class="card mt-14">
         <div class="slabel" data-i18n="watch_picker_label">Date-night picker</div>
         <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="watch_picker_sub">Six watch ideas tuned to you two — tap to find on YouTube.</p>
@@ -532,6 +684,96 @@
         <div class="slabel" data-i18n="together_care_label">Care packages</div>
         <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="together_care_sub">A tap to remind them you're thinking of them — pops up on their screen instantly.</p>
         <div id="care-row" class="care-row"></div>
+      </div>
+
+      <!-- Games hub — Tether (original two-player card game) -->
+      <div class="card mt-14" id="tg-card">
+        <div class="slabel" data-i18n="tg_label">Tether — card game</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="tg_sub">Match the suit or the number to shed your hand. Play a Tether and you can send a note across with it.</p>
+
+        <div id="tg-intro" class="tg-intro">
+          <div class="tg-rules">
+            <div><b>✦ ≈ ☾ ❋</b> — four suits, nine numbers each.</div>
+            <div><b>⇢ Drift</b> — they draw two and lose the turn.</div>
+            <div><b>⊘ Mirror</b> — they lose a turn.</div>
+            <div><b>∞ Tether</b> — wild: pick any suit, and send a note.</div>
+          </div>
+          <button id="tg-start" class="btn btn-primary btn-sm" data-i18n="tg_start">Deal a round</button>
+        </div>
+
+        <div id="tg-wrap" class="tg-wrap hidden">
+          <div class="tg-opp">
+            <span id="tg-opp-name" class="tg-opp-name">Partner</span>
+            <span id="tg-opp-count" class="tg-opp-count">—</span>
+          </div>
+
+          <div class="tg-table">
+            <div id="tg-pile" class="tg-pile"></div>
+            <div class="tg-meta">
+              <div id="tg-suit" class="tg-suit-now"></div>
+              <div id="tg-deck" class="tg-deck-count"></div>
+            </div>
+          </div>
+
+          <div id="tg-turn" class="tg-turn"></div>
+          <div id="tg-picker" class="tg-picker hidden"></div>
+          <div id="tg-note-row" class="tg-note-row hidden">
+            <input id="tg-note" type="text" maxlength="140" data-i18n-placeholder="tg_note_ph" placeholder="Say something as it lands…">
+          </div>
+
+          <div id="tg-hand" class="tg-hand"></div>
+          <div id="tg-notes" class="tg-notes"></div>
+
+          <div class="together-actions">
+            <button id="tg-draw" class="btn btn-secondary btn-sm" data-i18n="tg_draw">Draw</button>
+            <button id="tg-quit" class="btn btn-ghost btn-sm" data-i18n="tg_quit">End round</button>
+          </div>
+        </div>
+        <div id="tg-toast" class="tg-toast"></div>
+      </div>
+
+      <!-- Puzzle — rebuild one of your own photos together -->
+      <div class="card mt-14" id="pz-card">
+        <div class="slabel" data-i18n="pz_label">Puzzle</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="pz_sub">Pick one of your photos and put it back together, live. Tap a tile, then tap another to swap them.</p>
+
+        <div class="pz-controls">
+          <label class="pz-size-label" for="pz-size" data-i18n="pz_size">Pieces</label>
+          <select id="pz-size"></select>
+        </div>
+
+        <div id="pz-picker" class="pz-picker"></div>
+        <div id="pz-stage" class="pz-stage hidden"></div>
+        <div id="pz-status" class="pz-status"></div>
+        <div id="pz-toast" class="tg-toast"></div>
+      </div>
+
+      <!-- Guess the Drawing -->
+      <div class="card mt-14" id="dg-card">
+        <div class="slabel" data-i18n="dg_label">Guess the drawing</div>
+        <p class="ob-sub" style="margin:6px 0 12px;" data-i18n="dg_sub">One of you draws a secret word, the other guesses. Roles swap each round.</p>
+
+        <div class="dg-bar">
+          <span id="dg-score" class="dg-score"></span>
+          <span id="dg-role" class="dg-role"></span>
+        </div>
+        <div id="dg-word" class="dg-word hidden"></div>
+
+        <div id="dg-stage" class="dg-stage hidden">
+          <canvas id="dg-canvas"></canvas>
+        </div>
+
+        <div id="dg-guess-row" class="dg-guess-row hidden">
+          <input id="dg-guess" type="text" maxlength="60" data-i18n-placeholder="dg_guess_ph" placeholder="Your guess…">
+          <button id="dg-guess-btn" class="btn btn-primary btn-sm" data-i18n="dg_guess_btn">Guess</button>
+        </div>
+        <div id="dg-guesses" class="dg-guesses"></div>
+
+        <div class="together-actions">
+          <button id="dg-new" class="btn btn-primary btn-sm" data-i18n="dg_new">Start a round</button>
+          <button id="dg-clear" class="btn btn-secondary btn-sm hidden" data-i18n="dg_clear">Clear</button>
+          <button id="dg-giveup" class="btn btn-ghost btn-sm hidden" data-i18n="dg_giveup">Reveal word</button>
+        </div>
       </div>
 
       <div class="card mt-14">

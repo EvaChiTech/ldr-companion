@@ -51,30 +51,62 @@ async function countQuestionsAsked() {
   return count || 0
 }
 
+// Hard timeout for the AI invoke. supabase-js v2 has no native timeout —
+// a stalled mobile network or slow upstream OpenAI call would otherwise
+// hang await indefinitely and strand the "Crafting…" spinner.
+const AI_INVOKE_TIMEOUT_MS = 20000
+
+function withTimeout(promise, ms, label) {
+  let timer
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
+}
+
 async function generateAndInsertQuestion() {
   if (!configured) return null
   const since = state.cfg?.since
   const dayIndex = since ? Math.floor((Date.now() - new Date(since + 'T00:00:00').getTime()) / 86400000) : 0
-  const askedSoFar = await countQuestionsAsked()
-  const recentQuestions = await fetchRecentQuestions(8)
+  // Both of these are best-effort context — a failure shouldn't break
+  // question generation. Catch individually so we can still proceed.
+  const askedSoFar = await countQuestionsAsked().catch(e => {
+    console.warn('[rituals] countQuestionsAsked failed, defaulting to 0', e?.message || e)
+    return 0
+  })
+  const recentQuestions = await fetchRecentQuestions(8).catch(e => {
+    console.warn('[rituals] fetchRecentQuestions failed, defaulting to []', e?.message || e)
+    return []
+  })
   const depth = getDepth(), theme = getTheme()
 
   let question, category
   try {
-    const { data, error } = await sb.functions.invoke('daily-question', {
-      body: {
-        n1: state.cfg.n1, n2: state.cfg.n2,
-        since, interests: state.cfg.interests,
-        dayIndex, askedSoFar, recentQuestions,
-        depth, theme,
-      },
-    })
+    const { data, error } = await withTimeout(
+      sb.functions.invoke('daily-question', {
+        body: {
+          n1: state.cfg?.n1, n2: state.cfg?.n2,
+          since, interests: state.cfg?.interests,
+          dayIndex, askedSoFar, recentQuestions,
+          depth, theme,
+        },
+      }),
+      AI_INVOKE_TIMEOUT_MS,
+      'daily-question',
+    )
     if (error) throw error
     question = data?.question
     category = data?.category || null
     if (!question) throw new Error('Empty question from AI')
   } catch (e) {
-    console.error('[rituals] AI fail, using bank fallback', e)
+    // Structured diagnostic — surfaces status/path/cause so the user
+    // (or a future debug pass) can tell timeout from auth from upstream.
+    console.error('[rituals] AI fail, using bank fallback', {
+      message: e?.message || String(e),
+      status:  e?.status ?? e?.statusCode ?? e?.context?.status,
+      name:    e?.name,
+      depth, theme, askedSoFar,
+    })
     const picked = pickFromBank({ depth, theme, seed: askedSoFar + dayIndex })
     question = picked.q
     category = picked.c
@@ -83,7 +115,13 @@ async function generateAndInsertQuestion() {
   const { data: inserted, error: insErr } = await sb.from('daily_questions').insert({
     room_id: state.room, date: today(), question, category,
   }).select().single()
-  if (insErr) { console.error(insErr); return null }
+  if (insErr) {
+    console.error('[rituals] insert daily_questions failed', {
+      message: insErr.message, code: insErr.code, details: insErr.details, hint: insErr.hint,
+      room_id: state.room,
+    })
+    return null
+  }
   return inserted
 }
 
@@ -132,14 +170,33 @@ async function submitAnswer() {
 async function nextQuestion() {
   const nextBtn = document.getElementById('dq-next')
   if (nextBtn) { nextBtn.disabled = true; nextBtn.textContent = '✨ Crafting…' }
-  const q = await generateAndInsertQuestion()
-  if (q) {
-    currentQuestion = q
-    pendingAudio = null
-    await renderActiveQuestion()
-    await renderHistory()
+  // try/finally guarantees the button text/state is always restored —
+  // without this, any thrown error inside generateAndInsertQuestion or
+  // the post-render awaits leaves the user stranded on "Crafting…".
+  try {
+    const q = await generateAndInsertQuestion()
+    if (q) {
+      currentQuestion = q
+      pendingAudio = null
+      try {
+        await renderActiveQuestion()
+        await renderHistory()
+      } catch (renderErr) {
+        console.error('[rituals] render after nextQuestion failed', renderErr)
+      }
+    } else {
+      // generateAndInsertQuestion returned null — already logged inside.
+      // Surface a brief toast so the user knows the action was acknowledged.
+      showToast('Could not generate a question right now — try again.')
+    }
+  } catch (e) {
+    // Should be unreachable given the catches inside, but guard against
+    // future regressions.
+    console.error('[rituals] nextQuestion unexpected error', e)
+    showToast('Something went wrong — try again.')
+  } finally {
+    if (nextBtn) { nextBtn.disabled = false; nextBtn.textContent = 'Next question →' }
   }
-  if (nextBtn) { nextBtn.disabled = false; nextBtn.textContent = 'Next question →' }
 }
 
 // ============================================================

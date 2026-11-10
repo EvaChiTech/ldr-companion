@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "icons:ext": "node scripts/make-extension-icons.mjs",
+    "build:ext": "node scripts/make-extension-icons.mjs && node scripts/build-extension.mjs",
+    "test": "node --test \"tests/**/*.test.js\"",
+    "test:watch": "node --test --watch \"tests/**/*.test.js\""
   },
   "dependencies": {
     "@fontsource/cormorant-garamond": "^5.2.11",

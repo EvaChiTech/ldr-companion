@@ -1,0 +1,21 @@
+/* ============================================================
+   FEATURE STYLES — entry point.
+
+   Loaded by a second <link> AFTER styles.css rather than @import-ed into
+   it. CSS requires @import to precede all rules, which would place these
+   files *before* the base stylesheet and silently invert any cascade tie
+   they currently win. A separate link keeps the original order exact.
+
+   Vite inlines these at build time, so this costs no extra requests in
+   production.
+   ============================================================ */
+
+@import './features/shell.css';
+@import './features/cowatch.css';
+@import './features/tether.css';
+@import './features/wander.css';
+@import './features/glance.css';
+@import './features/puzzle.css';
+@import './features/drawgame.css';
+@import './features/dayinlife.css';
+@import './features/travel.css';

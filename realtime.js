@@ -7,7 +7,7 @@ let channel = null
  * Subscribe to all real-time events for the current room.
  * Calls the provided handlers when data changes.
  */
-export function subscribeRoom({ onMessage, onMood, onNote, onBucket, onMilestone, onWatch, onDailyAnswer, onSleepEvent, onDailyQuestion, onPresenceChange, onSoundCapsule, onReunion, onLetter, onDream, onCalendar, onExpense, onVisa, onCare, onVlog }) {
+export function subscribeRoom({ onMessage, onMood, onNote, onBucket, onMilestone, onWatch, onDailyAnswer, onSleepEvent, onDailyQuestion, onPresenceChange, onSoundCapsule, onReunion, onLetter, onDream, onCalendar, onExpense, onVisa, onCare, onVlog, onRoomConfig }) {
   if (channel) sb.removeChannel(channel)
 
   channel = sb.channel('room:' + state.room, {
@@ -116,6 +116,14 @@ export function subscribeRoom({ onMessage, onMood, onNote, onBucket, onMilestone
     // Vlogs
     .on('postgres_changes', { event: '*', schema: 'public', table: 'vlogs',           filter: `room_id=eq.${state.room}` }, payload => onVlog?.(payload))
 
+    // Partner moved (changed their timezone). Sent as a broadcast rather than
+    // read from postgres_changes because `rooms` is deliberately not in the
+    // realtime publication — this keeps the feature schema-free.
+    .on('broadcast', { event: 'room_cfg' }, ({ payload }) => {
+      if (payload?.from === state.me) return
+      onRoomConfig?.(payload)
+    })
+
     // Presence — detect when partner comes online / offline
     .on('presence', { event: 'sync' }, () => {
       const ps = channel.presenceState()
@@ -132,6 +140,21 @@ export function subscribeRoom({ onMessage, onMood, onNote, onBucket, onMilestone
     })
 
   return channel
+}
+
+/**
+ * Tell the other side we just moved, so their clocks update without a reload.
+ * Safe to call when not subscribed — it simply does nothing.
+ */
+export function broadcastRoomConfig(payload = {}) {
+  if (!channel) return
+  try {
+    channel.send({
+      type: 'broadcast',
+      event: 'room_cfg',
+      payload: { ...payload, from: state.me },
+    })
+  } catch {}
 }
 
 export function unsubscribeRoom() {

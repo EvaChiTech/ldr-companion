@@ -64,8 +64,9 @@ function showStep() {
   const step = TOUR[stepIdx]
   if (!step) { close(); return }
   // Switch to the relevant tab so the user sees the actual feature
-  const tabBtn = document.querySelector(`.tab[data-tab="${step.tab}"]`)
-  if (tabBtn) tabBtn.click()
+  // Ask the shell to navigate. Panels such as watch/rituals are no longer
+  // top-level tabs, so clicking a .tab by name would silently do nothing.
+  document.dispatchEvent(new CustomEvent('ldr:navigate', { detail: { panel: step.tab } }))
   modal.querySelector('#welcome-emoji').textContent = step.emoji
   modal.querySelector('#welcome-title').textContent = step.tab.charAt(0).toUpperCase() + step.tab.slice(1)
   modal.querySelector('#welcome-body').textContent = t(step.key)

@@ -27,6 +27,35 @@ async function listCapsules() {
   return data || []
 }
 
+/**
+ * Turn an opaque Storage failure into something that names its own cause.
+ *
+ * A bucket's `public` flag grants READ only; without an explicit INSERT
+ * policy on storage.objects every upload fails with an RLS violation. That
+ * reads as a generic error, which is why this class of bug has twice gone
+ * undiagnosed here.
+ */
+function explainStorageError(err, bucket) {
+  const msg = String(err?.message || '')
+  const status = err?.status ?? err?.statusCode
+  if (/row-level security|violates|not authorized|403/i.test(msg) || status === 403) {
+    return `Storage rejected the upload. The "${bucket}" bucket is missing its ` +
+           'insert policy — run the storage section of schema.sql.'
+  }
+  if (/not found|404/i.test(msg) || status === 404) {
+    return `The "${bucket}" storage bucket does not exist — run the storage ` +
+           'section of schema.sql.'
+  }
+  if (/mime|content type/i.test(msg)) {
+    return `This recording format isn't allowed in "${bucket}". ` +
+           'Check allowed_mime_types in schema.sql.'
+  }
+  if (/exceeded|too large|413/i.test(msg) || status === 413) {
+    return 'That recording is too large for the bucket limit.'
+  }
+  return msg || 'Upload failed.'
+}
+
 async function uploadCapsule(blob, label) {
   if (!state.room) throw new Error('No room selected — refresh and try again.')
   const ext = (blob.type.includes('mp4') ? 'mp4' : blob.type.includes('ogg') ? 'ogg' : 'webm')
@@ -39,7 +68,7 @@ async function uploadCapsule(blob, label) {
       message: upErr.message, status: upErr.status ?? upErr.statusCode,
       path, size: blob.size, contentType: blob.type,
     })
-    throw upErr
+    throw new Error(explainStorageError(upErr, 'sound-capsules'))
   }
   const { data } = sb.storage.from('sound-capsules').getPublicUrl(path)
   const audio_url = data.publicUrl
