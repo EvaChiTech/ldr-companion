@@ -1045,37 +1045,20 @@ function copyCode() {
 }
 
 function tearDownActiveRoom() {
-  unsubscribeRoom()
-  teardownWatch()
-  teardownCoWatch()
-  teardownGames()
-  teardownPuzzle()
-  teardownDrawGame()
-  teardownDayInLife()
-  teardownTravel()
-  teardownTogether()
-  teardownRituals()
-  teardownMemory()
-  teardownHeartbeat()
-  teardownSoundCapsules()
-  teardownHarmony()
-  teardownWander()
-  teardownGlance()
-  teardownReunion()
-  teardownLetters()
-  teardownDreams()
-  teardownLife()
-  teardownAnniversary()
-  teardownCoach()
-  teardownTone()
-  teardownMiniGame()
-  teardownHistory()
-  teardownMoodViz()
-  teardownWrapped()
-  teardownLocalCare()
-  teardownAlbum()
-  teardownVlog()
-  teardownStats()
+  // Each module is torn down in isolation: one throwing must not strand the
+  // rest, or Leave / switching rooms silently does nothing.
+  for (const teardown of [
+    unsubscribeRoom, teardownWatch, teardownCoWatch, teardownGames,
+    teardownPuzzle, teardownDrawGame, teardownDayInLife, teardownTravel,
+    teardownTogether, teardownRituals, teardownMemory, teardownHeartbeat,
+    teardownSoundCapsules, teardownHarmony, teardownWander, teardownGlance,
+    teardownReunion, teardownLetters, teardownDreams, teardownLife,
+    teardownAnniversary, teardownCoach, teardownTone, teardownMiniGame,
+    teardownHistory, teardownMoodViz, teardownWrapped, teardownLocalCare,
+    teardownAlbum, teardownVlog, teardownStats,
+  ]) {
+    try { teardown() } catch (e) { console.error(`[teardown] ${teardown.name} failed`, e) }
+  }
   Object.keys(tabInited).forEach(k => tabInited[k] = false)
   lastPartnerOnline = null
   state.room = null; state.cfg = null; state.me = null

@@ -283,6 +283,8 @@ function nextInReel() {
 
 function endReel() {
   reel = null
+  // Teardown runs on every room switch, even if this tab was never opened.
+  if (!els.reelVideo) return
   els.reelVideo.onended = null
   els.reelVideo.onerror = null
   try { els.reelVideo.pause() } catch {}
