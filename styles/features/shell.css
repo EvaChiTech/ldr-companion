@@ -1,0 +1,311 @@
+/* ============================================================
+   APP SHELL — navigation, icons, and the motion/elevation tokens
+   the rest of the UI leans on.
+
+   Loaded after the base sheet, so equal-specificity rules here win
+   deliberately over the older .tabs/.tab styling.
+   ============================================================ */
+
+:root {
+  /* Motion. One rhythm for the whole app — micro-interactions at 150ms,
+     state changes at 220ms, nothing over 320ms. Exits run shorter than
+     entrances so dismissals feel immediate. */
+  --dur-fast: 150ms;
+  --dur:      220ms;
+  --dur-slow: 320ms;
+  --ease:     cubic-bezier(0.2, 0, 0.2, 1);      /* standard */
+  --ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);   /* entering */
+  --ease-in:  cubic-bezier(0.3, 0, 0.8, 0.15);   /* exiting  */
+
+  /* Elevation — a fixed 4-step scale instead of ad-hoc shadows. */
+  --el-1: 0 1px 2px rgba(31, 24, 21, 0.06), 0 1px 1px rgba(31, 24, 21, 0.04);
+  --el-2: 0 2px 6px rgba(31, 24, 21, 0.07), 0 1px 2px rgba(31, 24, 21, 0.05);
+  --el-3: 0 8px 20px rgba(31, 24, 21, 0.10), 0 2px 6px rgba(31, 24, 21, 0.06);
+  --el-4: 0 18px 44px rgba(31, 24, 21, 0.16), 0 4px 12px rgba(31, 24, 21, 0.08);
+
+  --nav-h: 62px;              /* mobile bottom bar height */
+  --focus-ring: 0 0 0 3px rgba(196, 89, 74, 0.35);
+}
+
+/* ── icons ────────────────────────────────────────────────── */
+.icn {
+  width: 20px; height: 20px;
+  display: inline-block;
+  vertical-align: -0.2em;
+  flex: 0 0 auto;
+  color: currentColor;
+}
+
+/* ── focus: one visible ring everywhere ───────────────────── */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ── primary navigation ───────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 4px 8px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.tab {
+  appearance: none;
+  flex: 1 1 0;
+  min-width: 0;
+  /* Touch target: 44px minimum, per Apple HIG / Material. */
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  position: relative;
+  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.tab:hover { color: var(--text); background: var(--surface-2); }
+.tab.active { color: var(--primary); }
+.tab .icn { width: 22px; height: 22px; }
+.tab-txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* Active marker is a shape, not just a colour — colour alone is not an
+   accessible indicator. */
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  width: 16px; height: 2.5px;
+  border-radius: 2px;
+  background: var(--primary);
+}
+
+.tab-badge {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  margin-left: 6px;
+  min-width: 16px; height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 10px; font-weight: 700;
+  line-height: 16px; text-align: center;
+}
+
+/* ── sub-navigation (segmented control) ───────────────────── */
+.subnav {
+  display: flex;
+  gap: 4px;
+  padding: 10px 16px 0;
+  max-width: 760px;
+  margin: 0 auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.subnav::-webkit-scrollbar { display: none; }
+.subnav[hidden] { display: none; }
+
+.subtab {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease),
+              color var(--dur-fast) var(--ease),
+              border-color var(--dur-fast) var(--ease);
+}
+.subtab:hover { background: var(--surface-2); color: var(--text); }
+.subtab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.subtab .icn { width: 16px; height: 16px; }
+
+/* ── panel entrance ───────────────────────────────────────── */
+.tab-panel { animation: panel-in var(--dur) var(--ease-out) both; }
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── mobile: nav becomes a bottom bar ─────────────────────── */
+@media (max-width: 767px) {
+  .tabs {
+    position: fixed;
+    inset: auto 0 0 0;
+    top: auto;
+    border-top: 1px solid var(--border);
+    border-bottom: none;
+    box-shadow: var(--el-3);
+    /* Clear the home indicator / gesture bar. */
+    padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+    z-index: 100;
+  }
+  /* Reserve space so fixed chrome never covers the end of the content. */
+  #main-app { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 12px); }
+  .subnav { padding-top: 12px; }
+}
+
+/* ── desktop: roomier, label beside icon ──────────────────── */
+@media (min-width: 768px) {
+  .tabs {
+    gap: 4px;
+    padding: 6px 16px;
+    max-width: 760px;
+    margin: 0 auto;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    flex: 0 1 auto;
+    flex-direction: row;
+    gap: 8px;
+    font-size: 13.5px;
+    padding: 8px 16px;
+  }
+  .tab.active { background: var(--surface-2); }
+  .tab.active::after { display: none; }
+  .tab-badge { position: static; margin-left: 2px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-panel { animation: none; }
+  * { scroll-behavior: auto; }
+}
+
+/* ── progressive disclosure ───────────────────────────────── */
+.disclosure {
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface);
+  box-shadow: var(--el-1);
+  overflow: hidden;
+  margin-top: 14px;
+}
+.disclosure-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;              /* comfortable touch target */
+  padding: 12px 16px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  user-select: none;
+}
+.disclosure-head::-webkit-details-marker { display: none; }
+.disclosure-head:hover { background: var(--surface-2); color: var(--text); }
+.disclosure-ico { display: inline-flex; color: var(--primary); }
+.disclosure-chev {
+  margin-left: auto;
+  display: inline-flex;
+  color: var(--text-3);
+  transition: transform var(--dur) var(--ease);
+}
+.disclosure[open] .disclosure-chev { transform: rotate(90deg); }
+.disclosure-body { padding: 0 14px 14px; }
+/* The cards inside already carry their own frame; drop the doubled border. */
+.disclosure-body > .card { box-shadow: none; }
+.disclosure[open] .disclosure-body { animation: disclose var(--dur) var(--ease-out) both; }
+@keyframes disclose {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .disclosure[open] .disclosure-body { animation: none; }
+  .disclosure-chev { transition: none; }
+}
+
+/* ── demo mode banner ─────────────────────────────────────── */
+.demo-banner {
+  position: fixed;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100vw - 24px);
+  padding: 8px 10px 8px 14px;
+  border-radius: 999px;
+  background: rgba(24, 20, 19, 0.94);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: #FAF6EE;
+  font-size: 12.5px;
+  box-shadow: var(--el-4);
+}
+.demo-banner b { font-weight: 700; }
+.demo-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.demo-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #4CAF7D;
+  box-shadow: 0 0 0 3px rgba(76, 175, 125, 0.25);
+  flex: 0 0 auto;
+}
+.demo-exit {
+  appearance: none; cursor: pointer; flex: 0 0 auto;
+  border: 1px solid rgba(250, 246, 238, 0.28);
+  background: transparent; color: inherit;
+  font: inherit; font-size: 11.5px; font-weight: 700;
+  padding: 4px 11px; border-radius: 999px;
+  transition: background var(--dur-fast) var(--ease);
+}
+.demo-exit:hover { background: rgba(250, 246, 238, 0.16); }
+
+/* Mobile: sit above the bottom nav instead of over the header. */
+@media (max-width: 767px) {
+  .demo-banner {
+    top: auto;
+    bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 10px);
+  }
+}
+
+/* ── demo entry on the landing screen ─────────────────────── */
+.demo-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 14px; padding: 9px 16px;
+  border: 1px dashed var(--border-2); border-radius: 999px;
+  background: transparent; color: var(--text-2);
+  font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.demo-cta:hover { border-color: var(--primary); color: var(--primary); }
+
+.demo-row { text-align: center; margin-top: 18px; }
+.demo-cta { text-decoration: none; }
+.demo-cta-ico { display: inline-flex; color: var(--primary); }
+.demo-note { font-size: 11.5px; color: var(--text-3); margin: 7px 0 0; }

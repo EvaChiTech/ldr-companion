@@ -1,11 +1,19 @@
 import { state, persistSession, clearSession, loadSession, loadRoomsList, upsertRoomMembership, setActiveRoomCode, getActiveRoomCode, sortedRooms } from './state.js'
 import { initRoomsList, showRoomsList, hideRoomsList, refreshRoomsList } from './rooms-list.js'
 import { subscribeRoom, unsubscribeRoom } from './realtime.js'
+import { initTravel, renderCurrent as renderMyLocation, teardownTravel } from './travel.js'
 import { generateDateIdeas, streamDateIdeas } from './ai.js'
 import { configured } from './supabase.js'
 import { tzTime, tzDate, tzDiff, daysBetween, cityLabel } from './clocks.js'
 import * as db from './db.js'
 import { initWatchTab, onRemoteWatchChange, teardownWatch, onChatMessage as watchOnChat } from './watch.js'
+import { initCoWatch, teardownCoWatch } from './cowatch.js'
+import { initGames, teardownGames } from './games.js'
+import { initWander, teardownWander } from './wander.js'
+import { initGlance, teardownGlance, onGlanceUpdate } from './glance.js'
+import { initPuzzle, teardownPuzzle, onPuzzlePhotos } from './puzzle.js'
+import { initDrawGame, teardownDrawGame } from './drawgame.js'
+import { initDayInLife, teardownDayInLife, onDayInLifeUpdate } from './dayinlife.js'
 import { initTogetherTab, teardownTogether } from './together.js'
 import { initRitualsTab, teardownRituals, onRemoteRitualEvent } from './rituals.js'
 import { initMemoryBook, teardownMemory } from './memory.js'
@@ -28,8 +36,10 @@ import { initLocalCare, teardownLocalCare, setPartnerMood } from './localcare.js
 import { initAuth, initAccountButton, pushRoomLink, deleteRoomLink, isSignedIn, onAuthChange } from './auth.js'
 import { initNotifications, notify, enableNotifications, disableNotifications, notifPref, pushToPartner } from './notify.js'
 import { initPolish } from './polish.js'
-import { initAnalytics, track } from './analytics.js'
+import { initAnalytics, track, trackOnce } from './analytics.js'
 import { initI18n, t } from './i18n.js'
+import { initIcons, icon } from './icons.js'
+import { isDemoRequested, seedDemoState, startDemo, onUserMessage as demoUserMessage } from './demo.js'
 import { maybeShowWelcome, showWelcomeForce } from './welcome.js'
 import { initErrorMonitor } from './errors.js'
 import { initAlbum, teardownAlbum, onRemoteAlbumUpdate } from './album.js'
@@ -103,6 +113,19 @@ const MOODS = ["Happy 😊", "Missing you 💭", "Peaceful 🌿", "Lonely 🌧",
 
 // ── DOM shortcuts ──────────────────────────────────────────
 const $ = id => document.getElementById(id)
+
+/**
+ * Swap every [data-icon="name"] placeholder for its SVG. Markup declares the
+ * icon it wants and this fills it in, so index.html stays free of inline SVG
+ * and dynamically-rendered chrome can opt in the same way.
+ */
+function paintIcons(root = document) {
+  root.querySelectorAll('[data-icon]').forEach(el => {
+    const name = el.dataset.icon
+    if (!name || el.firstElementChild) return   // already painted
+    el.innerHTML = icon(name)
+  })
+}
 
 // Escape user/DB-sourced strings before they touch innerHTML.
 const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => (
@@ -301,6 +324,7 @@ function startApp() {
   if (cfg.interests) $('ai-inp').value = cfg.interests
 
   buildMoodPills()
+  initTravel({ onChanged: refreshLocations })
   updateClocks()
   updateCountdown()
   initSoundToggle()
@@ -311,7 +335,8 @@ function startApp() {
   setInterval(updateCountdown, 60000)
 
   if (configured) {
-    subscribeRoom({
+    // Demo mode drives these handlers itself and must not open a channel.
+    if (!state.demo) subscribeRoom({
       onMessage:        handleIncomingMessage,
       onMood:           () => loadMood(),
       onNote:           () => loadTheirNote(),
@@ -330,10 +355,13 @@ function startApp() {
       onExpense:        () => onRemoteLifeEvent('expense'),
       onVisa:           () => onRemoteLifeEvent('visa'),
       onCare:           () => onRemoteLifeEvent('care'),
-      onVlog:           onRemoteVlog,
+      onVlog:           (...a) => { onRemoteVlog(...a); onDayInLifeUpdate() },
+      onRoomConfig:     onPartnerMoved,
     })
     initReunion()
     initHarmony()
+    initWander()
+    initGlance()
     initAnniversary()
     initCoach()
     initTone()
@@ -361,6 +389,32 @@ function updateClocks() {
   $('h-date2').textContent  = tzDate(cfg.tz2)
   $('h-tdiff').textContent  = tzDiff(cfg.tz1, cfg.tz2)
   $('hdr-days').textContent = daysBetween(cfg.since).toLocaleString() + ' days together'
+}
+
+/**
+ * Repaint everything that depends on either timezone. Called after our own
+ * move and after the partner's, so one path covers both.
+ */
+function refreshLocations() {
+  const { cfg } = state
+  if (!cfg) return
+  $('h-city1').textContent = cityLabel(cfg.tz1)
+  $('h-city2').textContent = cityLabel(cfg.tz2)
+  updateClocks()
+  renderMyLocation()
+  // These read a timezone at render time, so they need a nudge too.
+  try { refreshStats() } catch {}
+}
+
+/** The other side moved — apply it and say so. */
+function onPartnerMoved(payload) {
+  const { cfg } = state
+  if (!cfg || !payload?.tz) return
+  if (payload.seat === 1)      cfg.tz1 = payload.tz
+  else if (payload.seat === 2) cfg.tz2 = payload.tz
+  else return
+  refreshLocations()
+  toast(`${state.theirName()} is now in ${payload.city || cityLabel(payload.tz)}`)
 }
 
 // ============================================================
@@ -416,7 +470,7 @@ function buildMoodPills() {
     b.onclick = () => {
       document.querySelectorAll('.mood-btn').forEach(x => x.classList.remove('active'))
       b.classList.add('active')
-      if (configured) db.upsertMood(m).catch(console.error)
+      if (configured && !state.demo) db.upsertMood(m).catch(console.error)
       track('mood_set', { mood: m })
     }
     c.appendChild(b)
@@ -576,7 +630,7 @@ function handleIncomingMessage(msg) {
   state.messages.push(msg)
   renderMessages()
   watchOnChat(msg)
-  if (msg.image_url) onRemoteAlbumUpdate()
+  if (msg.image_url) { onRemoteAlbumUpdate(); onGlanceUpdate(); onPuzzlePhotos() }
   if ($('tab-chat').style.display === 'none') {
     state.unread++
     const b = $('chat-badge'); b.textContent = state.unread; b.style.display = 'inline-flex'
@@ -644,7 +698,7 @@ async function sendMessage() {
   if (!text && !pendingImage) return
   inp.value = ''
 
-  if (!configured) {
+  if (!configured || state.demo) {
     state.messages.push({
       id: Date.now(), partner_idx: state.me,
       content: text, image_url: pendingImage?.previewUrl || null,
@@ -652,7 +706,10 @@ async function sendMessage() {
     })
     pendingImage = null  // keep blob URL alive for offline preview
     renderPendingImage()
-    renderMessages(); return
+    renderMessages()
+    // Close the loop: the simulated partner answers.
+    if (state.demo && text) demoUserMessage(text)
+    return
   }
 
   // Capture and clear local pending state immediately so the UI feels snappy
@@ -667,6 +724,8 @@ async function sendMessage() {
     }
     await db.insertMessage(text, attachment)
     track('message_sent', { has_image: !!attachment, has_text: !!text })
+    // Activation: the first message is the moment the product starts working.
+    trackOnce('activated_first_message')
     pushToPartner({
       title: `${state.cfg?.alias || (state.cfg.n1 + ' & ' + state.cfg.n2)}`,
       body: attachment ? '📷 sent a photo' : (text || '').slice(0, 80),
@@ -855,26 +914,126 @@ async function loadAll() {
 // UI HELPERS
 // ============================================================
 const tabInited = { watch: false, together: false, rituals: false, story: false, life: false }
-function switchTab(tab, btn) {
-  ['home','chat','plans','story','watch','together','rituals','life'].forEach(id => {
-    const el = $('tab-' + id); if (el) el.style.display = 'none'
-  })
-  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'))
-  $('tab-' + tab).style.display = 'block'; btn.classList.add('active')
-  track('tab_view', { tab })
-  if (tab === 'chat') {
+/**
+ * Top-level navigation.
+ *
+ * Eight tabs became five by GROUPING existing panels rather than merging their
+ * markup: each nav item owns one or more panel ids, and a segmented sub-nav
+ * picks between them. Nothing in the DOM moved, so every panel id, init call
+ * and module teardown keeps working exactly as before — the restructure is
+ * entirely in this mapping.
+ */
+const TAB_GROUPS = {
+  home:     [['home',     'tab_home',     'home']],
+  chat:     [['chat',     'tab_chat',     'chat']],
+  together: [['together', 'tab_together', 'together'],
+             ['watch',    'tab_watch',    'video']],
+  story:    [['story',    'tab_story',    'story']],
+  life:     [['life',     'tab_life',     'life'],
+             ['plans',    'tab_plans',    'calendar'],
+             ['rituals',  'tab_rituals',  'moon']],
+}
+
+const ALL_PANELS = ['home','chat','plans','story','watch','together','rituals','life']
+
+/** Remembers the sub-panel last viewed per group, so returning feels continuous. */
+const lastSub = {}
+
+/** Run a panel's one-time initialisers. */
+function initPanel(id) {
+  if (tabInited[id]) return
+  if (id === 'watch')    { initWatchTab(); initCoWatch() }
+  else if (id === 'together') {
+    initTogetherTab(); initHeartbeat(); initSoundCapsules(); initMiniGame()
+    initGames(); initPuzzle().catch(console.error); initDrawGame()
+  }
+  else if (id === 'rituals') { initRitualsTab(); initDreams() }
+  else if (id === 'story')   { initMemoryBook(); initLetters(); initAlbum(); initVlog(); initDayInLife().catch(console.error) }
+  else if (id === 'life')    { initLife() }
+  else return                      // home / chat / plans need no lazy init
+  tabInited[id] = true
+}
+
+function showPanel(groupKey, panelId) {
+  ALL_PANELS.forEach(id => { const el = $('tab-' + id); if (el) el.style.display = 'none' })
+  const el = $('tab-' + panelId)
+  if (el) el.style.display = 'block'
+  lastSub[groupKey] = panelId
+  initPanel(panelId)
+  track('tab_view', { tab: panelId })
+
+  if (panelId === 'chat') {
     state.unread = 0; $('chat-badge').style.display = 'none'
     setTimeout(() => { const c = $('chat-messages'); if (c) c.scrollTop = c.scrollHeight }, 50)
     if (configured) db.markRoomMessagesRead().catch(console.error)
   }
-  if (tab === 'watch'    && !tabInited.watch)    { initWatchTab();    tabInited.watch    = true }
-  if (tab === 'together' && !tabInited.together) {
-    initTogetherTab(); initHeartbeat(); initSoundCapsules(); initMiniGame()
-    tabInited.together = true
-  }
-  if (tab === 'rituals'  && !tabInited.rituals)  { initRitualsTab();  initDreams();    tabInited.rituals = true }
-  if (tab === 'story'    && !tabInited.story)    { initMemoryBook();  initLetters();   initAlbum();   initVlog();   tabInited.story   = true }
-  if (tab === 'life'     && !tabInited.life)     { initLife();        tabInited.life   = true }
+}
+
+function renderSubnav(groupKey, activeId) {
+  const host = $('subnav')
+  if (!host) return
+  const members = TAB_GROUPS[groupKey] || []
+  // A single-panel group needs no chooser; hiding it keeps the chrome quiet.
+  if (members.length < 2) { host.hidden = true; host.innerHTML = ''; return }
+
+  host.hidden = false
+  host.innerHTML = members.map(([id, key, ico]) => `
+    <button class="subtab${id === activeId ? ' active' : ''}" data-sub="${id}"
+            role="tab" aria-selected="${id === activeId}">
+      <span class="sub-ico" data-icon="${ico}"></span><span data-i18n="${key}">${t(key)}</span>
+    </button>`).join('')
+  paintIcons(host)
+  host.querySelectorAll('[data-sub]').forEach(b =>
+    b.addEventListener('click', () => {
+      showPanel(groupKey, b.dataset.sub)
+      renderSubnav(groupKey, b.dataset.sub)
+    }))
+}
+
+/**
+ * Navigate to any panel by id, regardless of which nav group now owns it.
+ *
+ * Panels that used to be top-level (watch, plans, rituals) are reachable only
+ * through their group's sub-nav, so callers that know a panel id but not its
+ * group — the onboarding tour, deep links — go through here.
+ *
+ * Exposed as a DOM event rather than an export because welcome.js is imported
+ * BY this module; a direct import would make the cycle load-order dependent.
+ */
+function navigateToPanel(panelId) {
+  const groupKey = Object.keys(TAB_GROUPS)
+    .find(k => TAB_GROUPS[k].some(([id]) => id === panelId))
+  if (!groupKey) return false
+
+  const btn = document.querySelector(`.tab[data-tab="${groupKey}"]`)
+  document.querySelectorAll('.tab').forEach(b => {
+    b.classList.remove('active'); b.setAttribute('aria-selected', 'false')
+  })
+  if (btn) { btn.classList.add('active'); btn.setAttribute('aria-selected', 'true') }
+
+  showPanel(groupKey, panelId)
+  renderSubnav(groupKey, panelId)
+  return true
+}
+
+document.addEventListener('ldr:navigate', e => {
+  if (e.detail?.panel) navigateToPanel(e.detail.panel)
+})
+
+function switchTab(tab, btn) {
+  const members = TAB_GROUPS[tab]
+  if (!members) return
+  // Return to whichever sub-panel they were last on in this group.
+  const target = members.some(([id]) => id === lastSub[tab]) ? lastSub[tab] : members[0][0]
+
+  document.querySelectorAll('.tab').forEach(b => {
+    b.classList.remove('active')
+    b.setAttribute('aria-selected', 'false')
+  })
+  if (btn) { btn.classList.add('active'); btn.setAttribute('aria-selected', 'true') }
+
+  showPanel(tab, target)
+  renderSubnav(tab, target)
 }
 
 function copyCode() {
@@ -888,12 +1047,20 @@ function copyCode() {
 function tearDownActiveRoom() {
   unsubscribeRoom()
   teardownWatch()
+  teardownCoWatch()
+  teardownGames()
+  teardownPuzzle()
+  teardownDrawGame()
+  teardownDayInLife()
+  teardownTravel()
   teardownTogether()
   teardownRituals()
   teardownMemory()
   teardownHeartbeat()
   teardownSoundCapsules()
   teardownHarmony()
+  teardownWander()
+  teardownGlance()
   teardownReunion()
   teardownLetters()
   teardownDreams()
@@ -1006,6 +1173,28 @@ async function init() {
   initErrorMonitor()  // catch errors from boot onward
   initSelects()
 
+  // ── Demo mode ────────────────────────────────────────────
+  // Checked before rooms, auth or storage: a demo session must never
+  // touch a real room, and must work with no account at all.
+  if (isDemoRequested()) {
+    seedDemoState()
+    initIcons(); paintIcons(); initI18n(); initPolish()
+    $('onboarding').style.display = 'none'
+    hideRoomsList()
+    startApp()
+    renderMessages()
+    startDemo({
+      onMessage:        handleIncomingMessage,
+      onPresenceChange: handlePresenceChange,
+      onPartnerMood:    m => { try { setPartnerMood(m) } catch {} },
+      onTyping:         on => {
+        const el = $('typing-indicator')
+        if (el) el.textContent = on ? `${state.theirName()} is typing…` : ''
+      },
+    })
+    return
+  }
+
   if (!configured) $('config-warn').style.display = 'block'
 
   // Wire header back-to-rooms button
@@ -1022,6 +1211,8 @@ async function init() {
   initAccountButton()
   initNotifications()  // service worker + push subscription if enabled
   initPolish()         // a11y, ESC handlers, focus management
+  initIcons()          // inject the SVG sprite before anything references it
+  paintIcons()         // fill every [data-icon] placeholder
   initI18n()           // locale detection + DOM translation
   initAnalytics()      // events tracking
   initLegal()          // privacy policy modal + consent wiring

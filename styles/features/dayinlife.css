@@ -1,0 +1,48 @@
+/* ============================================================
+   DAY IN THE LIFE (dayinlife.js)
+   ============================================================ */
+.dl-hint {
+  font-size: 12.5px; padding: 7px 11px; margin-bottom: 11px;
+  background: rgba(196,89,74,0.1);
+  border: 1px solid rgba(196,89,74,0.3);
+  border-radius: var(--r-sm); color: var(--primary); font-weight: 600;
+}
+.dl-hint.hidden, .dl-preview-wrap.hidden, .dl-reel-wrap.hidden,
+.dl-count.hidden, #dl-play.hidden { display: none; }
+
+#dl-ping.is-on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+.dl-preview-wrap {
+  position: relative; margin-top: 11px;
+  width: 100%; max-width: 260px;
+  border-radius: var(--r-sm); overflow: hidden; background: #000;
+}
+.dl-preview { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block; }
+.dl-count {
+  position: absolute; top: 8px; right: 9px;
+  min-width: 25px; text-align: center;
+  padding: 3px 7px; border-radius: 999px;
+  background: rgba(196,89,74,0.92); color: #fff;
+  font-size: 12.5px; font-weight: 700;
+}
+#dl-rec.is-rec { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+.dl-status { font-size: 12.5px; color: var(--text-3); margin-top: 9px; min-height: 17px; }
+.dl-err    { font-size: 12.5px; color: var(--primary); min-height: 17px; }
+
+.dl-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.dl-chip {
+  display: flex; align-items: baseline; gap: 5px;
+  font-size: 11.5px; padding: 4px 9px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--text-3);
+}
+.dl-chip b { color: var(--text); font-size: 12px; }
+.dl-none { font-size: 12.5px; color: var(--text-3); }
+
+.dl-reel-wrap { margin-top: 12px; background: #000; border-radius: var(--r-sm); overflow: hidden; }
+.dl-reel { width: 100%; max-height: 54vh; display: block; background: #000; }
+.dl-reel-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 9px;
+  padding: 7px 10px; background: var(--surface-2);
+}
+.dl-reel-label { font-size: 12px; color: var(--text-3); }

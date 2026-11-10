@@ -1,0 +1,107 @@
+/* ============================================================
+   TETHER — two-player card game (games.js)
+   Suits are drawn as type + CSS only; no raster card art.
+   ============================================================ */
+.tg-intro { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.tg-rules {
+  display: grid; gap: 5px;
+  font-size: 12.5px; color: var(--text-2);
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+.tg-rules b { color: var(--text); }
+
+.tg-wrap { display: flex; flex-direction: column; gap: 10px; }
+.tg-wrap.hidden, .tg-intro.hidden, .tg-picker.hidden, .tg-note-row.hidden { display: none; }
+
+.tg-opp { display: flex; align-items: baseline; gap: 8px; }
+.tg-opp-name  { font-weight: 700; font-size: 13px; }
+.tg-opp-count { font-size: 12px; color: var(--text-3); }
+
+.tg-table {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px; border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.tg-meta { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.tg-suit-now { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.tg-deck-count { color: var(--text-3); }
+.tc-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+.tg-turn { font-size: 13px; color: var(--text-3); min-height: 18px; }
+.tg-turn.is-mine { color: var(--green); font-weight: 600; }
+.tg-turn.is-win  { color: var(--green); font-weight: 700; }
+.tg-turn.is-lose { color: var(--text-2); }
+
+/* -- cards -- */
+.tg-hand { display: flex; flex-wrap: wrap; gap: 7px; }
+.tcard {
+  appearance: none; cursor: pointer;
+  width: 56px; height: 80px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+  border-radius: 9px; border: 1px solid rgba(0,0,0,0.16);
+  background: var(--surface);
+  color: #fff;
+  font-family: var(--sans);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+  box-shadow: var(--shadow);
+}
+.tcard:hover:not(:disabled) { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+.tcard:disabled, .tcard.is-dim { cursor: default; opacity: 0.4; }
+.tcard.is-top { cursor: default; width: 64px; height: 92px; }
+.tc-glyph { font-size: 22px; line-height: 1; }
+.tc-value { font-size: 20px; font-weight: 700; line-height: 1; }
+.tc-label { font-size: 9.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* Suit colours — distinct in hue AND lightness, so they stay
+   distinguishable for red/green colour blindness. */
+.tc-ember { background: linear-gradient(160deg, #C4594A, #A8402F); }
+.tc-tide  { background: linear-gradient(160deg, #3E7C9B, #275C78); }
+.tc-dusk  { background: linear-gradient(160deg, #5B4B82, #3D3160); }
+.tc-bloom { background: linear-gradient(160deg, #C08A3E, #9A6A24); }
+.tc-dot.tc-ember { background: #C4594A; }
+.tc-dot.tc-tide  { background: #3E7C9B; }
+.tc-dot.tc-dusk  { background: #5B4B82; }
+.tc-dot.tc-bloom { background: #C08A3E; }
+
+/* -- wild suit picker -- */
+.tg-picker { display: flex; flex-direction: column; gap: 7px; }
+.tg-picker-label { font-size: 12px; color: var(--text-2); }
+.tg-picker-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.tg-suit {
+  appearance: none; cursor: pointer;
+  border: none; border-radius: 999px;
+  padding: 6px 13px; color: #fff;
+  font-family: var(--sans); font-size: 12px; font-weight: 700;
+}
+.tg-suit:hover { filter: brightness(1.1); }
+
+.tg-note-row input {
+  width: 100%; font: inherit; font-size: 13px;
+  padding: 7px 11px;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); color: var(--text);
+}
+.tg-notes { display: grid; gap: 4px; }
+.tg-note { font-size: 12px; color: var(--text-2); }
+
+.tg-toast {
+  position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 14px);
+  max-width: 82vw;
+  padding: 9px 15px; border-radius: 999px;
+  background: var(--text); color: var(--bg);
+  font-size: 13px; box-shadow: var(--shadow-md);
+  opacity: 0; pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+  z-index: 900;
+}
+.tg-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 420px) {
+  .tcard { width: 48px; height: 70px; }
+  .tcard.is-top { width: 56px; height: 80px; }
+}
