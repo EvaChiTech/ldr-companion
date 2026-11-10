@@ -492,6 +492,16 @@ CREATE TABLE IF NOT EXISTS events (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- A live `events` table predates this definition with a different shape, so
+-- CREATE TABLE IF NOT EXISTS is a no-op there. Backfill any missing columns
+-- (nullable, so existing rows are untouched) before indexing them.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS user_id    UUID;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS room_code  TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS session_id TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS event_name TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS props      JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
 -- Retention queries slice by day, by room, and by event name.
 CREATE INDEX IF NOT EXISTS events_created_idx   ON events (created_at DESC);
 CREATE INDEX IF NOT EXISTS events_room_day_idx  ON events (room_code, created_at DESC);
