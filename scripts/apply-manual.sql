@@ -8,8 +8,8 @@
 -- Safe to run more than once: every statement is idempotent
 -- (CREATE TABLE IF NOT EXISTS / ON CONFLICT DO UPDATE / DROP POLICY IF EXISTS).
 --
--- Requires is_room_member() to already exist — it does, your vlogs policies
--- use it today.
+-- Storage policies use an inline EXISTS on room_members, NOT is_room_member():
+-- the function-call form fails inside storage RLS and broke uploads in prod.
 -- ============================================================
 
 -- ============================================================
@@ -85,14 +85,14 @@ CREATE POLICY "capsules_read" ON storage.objects
   FOR SELECT USING (bucket_id = 'sound-capsules');
 CREATE POLICY "capsules_member_insert" ON storage.objects
   FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'sound-capsules' AND is_room_member((storage.foldername(name))[1]));
+  WITH CHECK (bucket_id = 'sound-capsules' AND EXISTS (SELECT 1 FROM public.room_members rm WHERE rm.room_id = (storage.foldername(name))[1] AND rm.user_id = (SELECT auth.uid())));
 CREATE POLICY "capsules_member_update" ON storage.objects
   FOR UPDATE TO authenticated
-  USING      (bucket_id = 'sound-capsules' AND is_room_member((storage.foldername(name))[1]))
-  WITH CHECK (bucket_id = 'sound-capsules' AND is_room_member((storage.foldername(name))[1]));
+  USING      (bucket_id = 'sound-capsules' AND EXISTS (SELECT 1 FROM public.room_members rm WHERE rm.room_id = (storage.foldername(name))[1] AND rm.user_id = (SELECT auth.uid())))
+  WITH CHECK (bucket_id = 'sound-capsules' AND EXISTS (SELECT 1 FROM public.room_members rm WHERE rm.room_id = (storage.foldername(name))[1] AND rm.user_id = (SELECT auth.uid())));
 CREATE POLICY "capsules_member_delete" ON storage.objects
   FOR DELETE TO authenticated
-  USING (bucket_id = 'sound-capsules' AND is_room_member((storage.foldername(name))[1]));
+  USING (bucket_id = 'sound-capsules' AND EXISTS (SELECT 1 FROM public.room_members rm WHERE rm.room_id = (storage.foldername(name))[1] AND rm.user_id = (SELECT auth.uid())));
 
 -- ── voice-notes (answers to daily questions) ────────────────
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -112,14 +112,14 @@ CREATE POLICY "voice_read" ON storage.objects
   FOR SELECT USING (bucket_id = 'voice-notes');
 CREATE POLICY "voice_member_insert" ON storage.objects
   FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'voice-notes' AND is_room_member((storage.foldername(name))[1]));
+  WITH CHECK (bucket_id = 'voice-notes' AND EXISTS (SELECT 1 FROM public.room_members rm WHERE rm.room_id = (storage.foldername(name))[1] AND rm.user_id = (SELECT auth.uid())));
 CREATE POLICY "voice_member_update" ON storage.objects
   FOR UPDATE TO authenticated
-  USING      (bucket_id = 'voice-notes' AND is_room_member((storage.foldername(name))[1]))
-  WITH CHECK (bucket_id = 'voice-notes' AND is_room_member((storage.foldername(name))[1]));
+  USING      (bucket_id = 'voice-notes' AND EXISTS (SELECT 1 FROM public.room_members rm WHERE rm.room_id = (storage.foldername(name))[1] AND rm.user_id = (SELECT auth.uid())))
+  WITH CHECK (bucket_id = 'voice-notes' AND EXISTS (SELECT 1 FROM public.room_members rm WHERE rm.room_id = (storage.foldername(name))[1] AND rm.user_id = (SELECT auth.uid())));
 CREATE POLICY "voice_member_delete" ON storage.objects
   FOR DELETE TO authenticated
-  USING (bucket_id = 'voice-notes' AND is_room_member((storage.foldername(name))[1]));
+  USING (bucket_id = 'voice-notes' AND EXISTS (SELECT 1 FROM public.room_members rm WHERE rm.room_id = (storage.foldername(name))[1] AND rm.user_id = (SELECT auth.uid())));
 
 -- ── chat-images (photos sent in chat) ───────────────────────
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -139,11 +139,11 @@ CREATE POLICY "chatimg_read" ON storage.objects
   FOR SELECT USING (bucket_id = 'chat-images');
 CREATE POLICY "chatimg_member_insert" ON storage.objects
   FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'chat-images' AND is_room_member((storage.foldername(name))[1]));
+  WITH CHECK (bucket_id = 'chat-images' AND EXISTS (SELECT 1 FROM public.room_members rm WHERE rm.room_id = (storage.foldername(name))[1] AND rm.user_id = (SELECT auth.uid())));
 CREATE POLICY "chatimg_member_update" ON storage.objects
   FOR UPDATE TO authenticated
-  USING      (bucket_id = 'chat-images' AND is_room_member((storage.foldername(name))[1]))
-  WITH CHECK (bucket_id = 'chat-images' AND is_room_member((storage.foldername(name))[1]));
+  USING      (bucket_id = 'chat-images' AND EXISTS (SELECT 1 FROM public.room_members rm WHERE rm.room_id = (storage.foldername(name))[1] AND rm.user_id = (SELECT auth.uid())))
+  WITH CHECK (bucket_id = 'chat-images' AND EXISTS (SELECT 1 FROM public.room_members rm WHERE rm.room_id = (storage.foldername(name))[1] AND rm.user_id = (SELECT auth.uid())));
 CREATE POLICY "chatimg_member_delete" ON storage.objects
   FOR DELETE TO authenticated
-  USING (bucket_id = 'chat-images' AND is_room_member((storage.foldername(name))[1]));
+  USING (bucket_id = 'chat-images' AND EXISTS (SELECT 1 FROM public.room_members rm WHERE rm.room_id = (storage.foldername(name))[1] AND rm.user_id = (SELECT auth.uid())));
