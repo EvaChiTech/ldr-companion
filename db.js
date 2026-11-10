@@ -1,6 +1,11 @@
 import { sb } from './supabase.js'
 import { state } from './state.js'
 
+// ── Demo mode ───────────────────────────────────────────────
+// Demo sessions are in-memory only. Short-circuiting inside the data layer
+// rather than at each call site means a newly added feature cannot write to
+// a real room just by forgetting a flag — the layer itself refuses.
+
 const today = () => new Date().toISOString().split('T')[0]
 
 // Postgres TEXT columns + Supabase JSON request bodies are UTF-8 end-to-end,
@@ -15,6 +20,7 @@ export async function roomCodeExists(code) {
 }
 
 export async function createRoomInDB(cfg) {
+  if (state.demo) return
   try {
     const cleanCfg = sanitizeForDB(cfg)
     const { data, error } = await sb.from('rooms').insert(cleanCfg).select().single()
@@ -60,7 +66,22 @@ export async function fetchRoom(code) {
 }
 
 export async function updateRoomVisit(code, visit) {
+  if (state.demo) return
   const { error } = await sb.from('rooms').update({ visit }).eq('id', code)
+  if (error) throw error
+}
+
+/**
+ * Move one partner's location. Writes only the column for the caller's own
+ * seat, so neither side can relocate the other even though RLS (which cannot
+ * restrict columns) permits updating the whole row.
+ */
+export async function updateMyTz(tz) {
+  if (state.demo) return
+  if (!state.room) throw new Error('No room selected — refresh and try again.')
+  if (state.me !== 1 && state.me !== 2) throw new Error('Unknown seat.')
+  const col = state.me === 1 ? 'tz1' : 'tz2'
+  const { error } = await sb.from('rooms').update({ [col]: tz }).eq('id', state.room)
   if (error) throw error
 }
 
@@ -68,6 +89,7 @@ export async function updateRoomVisit(code, visit) {
 // create_room inserts the room AND records the caller as member (partner 1)
 // atomically, with definer rights — a fresh member can't be added by RLS alone.
 export async function createRoom(cfg) {
+  if (state.demo) return
   const { data, error } = await sb.rpc('create_room', {
     p_id: cfg.id, p_n1: cfg.n1, p_n2: cfg.n2,
     p_tz1: cfg.tz1, p_tz2: cfg.tz2,
@@ -92,6 +114,7 @@ export async function previewRoom(code) {
 
 // join_room records the caller as a member, then returns the full room row.
 export async function joinRoom(code, partnerIdx) {
+  if (state.demo) return
   const { data, error } = await sb.rpc('join_room', {
     p_code: code, p_partner_idx: partnerIdx,
   })
@@ -104,6 +127,7 @@ export async function joinRoom(code, partnerIdx) {
 // safe to call on every boot. Heals the post-cutover gap where pre-existing
 // rooms had no room_members rows — without it, storage writes get a 400.
 export async function ensureMembership(rooms) {
+  if (state.demo) return
   if (!sb || !Array.isArray(rooms) || !rooms.length) return
   await Promise.all(rooms.map(async r => {
     if (!r?.code || ![1, 2].includes(r.me)) return
@@ -116,12 +140,14 @@ export async function ensureMembership(rooms) {
 // the caller belongs to for permanent deletion in 30 days. Either partner
 // can cancel during that window via cancelPendingDeletion(roomId).
 export async function deleteMyData() {
+  if (state.demo) return
   const { data, error } = await sb.rpc('delete_my_data')
   if (error) throw error
   return data || null
 }
 
 export async function cancelPendingDeletion(roomId) {
+  if (state.demo) return
   const { data, error } = await sb.rpc('cancel_pending_deletion', { p_room_id: roomId })
   if (error) throw error
   return data || null
@@ -129,6 +155,7 @@ export async function cancelPendingDeletion(roomId) {
 
 // ── MESSAGES ───────────────────────────────────────────────
 export async function fetchMessages() {
+  if (state.demo) return []
   const { data, error } = await sb.from('messages').select('*')
     .eq('room_id', state.room).order('created_at')
   if (error) throw error
@@ -136,6 +163,7 @@ export async function fetchMessages() {
 }
 
 export async function insertMessage(content, attachment) {
+  if (state.demo) return
   const row = {
     room_id:     state.room,
     partner_idx: state.me,
@@ -151,6 +179,7 @@ export async function insertMessage(content, attachment) {
 
 // Mark all unread messages in this room from the OTHER partner as read by me.
 export async function markRoomMessagesRead() {
+  if (state.demo) return
   const { data: unread } = await sb.from('messages')
     .select('id,read_by,partner_idx').eq('room_id', state.room).neq('partner_idx', state.me).limit(200)
   if (!unread?.length) return
@@ -165,6 +194,7 @@ export async function markRoomMessagesRead() {
 
 // Fetch all chat images in this room for the photo album.
 export async function fetchChatImages() {
+  if (state.demo) return []
   const { data } = await sb.from('messages')
     .select('id,partner_idx,image_url,content,created_at')
     .eq('room_id', state.room).not('image_url', 'is', null)
@@ -174,6 +204,7 @@ export async function fetchChatImages() {
 
 // Export everything in a room as a single JSON blob (for backup / download).
 export async function exportRoomData() {
+  if (state.demo) return {}
   const tables = [
     'rooms', 'messages', 'moods', 'notes', 'bucket_items', 'milestones',
     'watch_sessions', 'daily_questions', 'daily_answers', 'sleep_events',
@@ -191,6 +222,7 @@ export async function exportRoomData() {
 
 // Upload a chat image to storage and return the public URL.
 export async function uploadChatImage(blob, kind = 'image') {
+  if (state.demo) return
   if (blob.size > MAX_IMAGE_BYTES) {
     throw new Error('Image is too large (max 10 MB).')
   }
@@ -209,6 +241,7 @@ export async function uploadChatImage(blob, kind = 'image') {
 
 // ── MOODS ──────────────────────────────────────────────────
 export async function fetchTodayMoods() {
+  if (state.demo) return []
   const { data, error } = await sb.from('moods').select('*')
     .eq('room_id', state.room).eq('date', today())
   if (error) throw error
@@ -216,6 +249,7 @@ export async function fetchTodayMoods() {
 }
 
 export async function upsertMood(mood) {
+  if (state.demo) return
   const { error } = await sb.from('moods').upsert({
     room_id:     state.room,
     partner_idx: state.me,
@@ -228,12 +262,14 @@ export async function upsertMood(mood) {
 
 // ── NOTES ──────────────────────────────────────────────────
 export async function fetchNote(partnerIdx) {
+  if (state.demo) return null
   const { data } = await sb.from('notes').select('content')
     .eq('room_id', state.room).eq('partner_idx', partnerIdx).eq('date', today()).single()
   return data?.content || ''
 }
 
 export async function upsertNote(content) {
+  if (state.demo) return
   try {
     const cleanContent = sanitizeForDB(content)
     const { error } = await sb.from('notes').upsert({
@@ -263,6 +299,7 @@ export async function upsertNote(content) {
 
 // ── BUCKET LIST ────────────────────────────────────────────
 export async function fetchBucket() {
+  if (state.demo) return []
   const { data, error } = await sb.from('bucket_items').select('*')
     .eq('room_id', state.room).order('created_at', { ascending: false })
   if (error) throw error
@@ -270,6 +307,7 @@ export async function fetchBucket() {
 }
 
 export async function insertBucketItem(text) {
+  if (state.demo) return
   try {
     const cleanText = sanitizeForDB(text)
     const { error } = await sb.from('bucket_items').insert({
@@ -296,17 +334,20 @@ export async function insertBucketItem(text) {
 }
 
 export async function toggleBucketItem(id, currentDone) {
+  if (state.demo) return
   const { error } = await sb.from('bucket_items').update({ done: !currentDone }).eq('id', id)
   if (error) throw error
 }
 
 export async function deleteBucketItem(id) {
+  if (state.demo) return
   const { error } = await sb.from('bucket_items').delete().eq('id', id)
   if (error) throw error
 }
 
 // ── MILESTONES ─────────────────────────────────────────────
 export async function fetchMilestones() {
+  if (state.demo) return []
   const { data, error } = await sb.from('milestones').select('*')
     .eq('room_id', state.room).order('date', { ascending: false })
   if (error) throw error
@@ -314,6 +355,7 @@ export async function fetchMilestones() {
 }
 
 export async function insertMilestone({ date, title, note }) {
+  if (state.demo) return
   try {
     const cleanTitle = sanitizeForDB(title)
     const cleanNote = sanitizeForDB(note)
@@ -341,12 +383,14 @@ export async function insertMilestone({ date, title, note }) {
 }
 
 export async function deleteMilestone(id) {
+  if (state.demo) return
   const { error } = await sb.from('milestones').delete().eq('id', id)
   if (error) throw error
 }
 
 // ── WATCH SESSION ──────────────────────────────────────────
 export async function fetchWatchSession() {
+  if (state.demo) return null
   const { data, error } = await sb.from('watch_sessions')
     .select('*').eq('room_id', state.room).maybeSingle()
   if (error && error.code !== 'PGRST116') throw error
@@ -354,6 +398,7 @@ export async function fetchWatchSession() {
 }
 
 export async function upsertWatchSession({ source, media_id, is_playing, position }) {
+  if (state.demo) return
   const { error } = await sb.from('watch_sessions').upsert({
     room_id:     state.room,
     source,
@@ -368,6 +413,7 @@ export async function upsertWatchSession({ source, media_id, is_playing, positio
 }
 
 export async function updateWatchQueue(queue) {
+  if (state.demo) return
   const { error } = await sb.from('watch_sessions')
     .update({ queue, updated_by: state.me, updated_at: new Date().toISOString() })
     .eq('room_id', state.room)
@@ -398,6 +444,7 @@ function logStorageError(tag, e, ctx = {}) {
 
 // ── VLOGS ──────────────────────────────────────────────────
 export async function uploadVlog(blob, { partnerIdx, ext = 'webm' }) {
+  if (state.demo) return
   // Strip codec params (e.g. "video/webm;codecs=vp9,opus") — Supabase Storage
   // wants a bare MIME type in the Content-Type header.
   const contentType = (blob.type || 'video/webm').split(';')[0].trim() || 'video/webm'
@@ -418,6 +465,7 @@ export async function uploadVlog(blob, { partnerIdx, ext = 'webm' }) {
 }
 
 export async function uploadVlogThumb(blob, partnerIdx) {
+  if (state.demo) return
   if (!state.room) throw new Error('No room selected — refresh and try again.')
   const path = `${state.room}/${Date.now()}-p${partnerIdx}-thumb.jpg`
   const { error } = await sb.storage.from('vlogs').upload(path, blob, {
@@ -429,6 +477,7 @@ export async function uploadVlogThumb(blob, partnerIdx) {
 }
 
 export async function insertVlog(row) {
+  if (state.demo) return
   const { data, error } = await sb.from('vlogs')
     .insert({ room_id: state.room, partner_idx: state.me, ...row })
     .select().single()
@@ -437,6 +486,7 @@ export async function insertVlog(row) {
 }
 
 export async function fetchVlogs() {
+  if (state.demo) return []
   const { data, error } = await sb.from('vlogs').select('*')
     .eq('room_id', state.room).order('created_at', { ascending: false }).limit(100)
   if (error) throw error
@@ -444,11 +494,13 @@ export async function fetchVlogs() {
 }
 
 export async function deleteVlog(id) {
+  if (state.demo) return
   const { error } = await sb.from('vlogs').delete().eq('id', id)
   if (error) throw error
 }
 
 export async function markVlogWatched(id) {
+  if (state.demo) return
   const { data: v } = await sb.from('vlogs').select('watched_by').eq('id', id).maybeSingle()
   const meKey = String(state.me)
   if (v?.watched_by?.[meKey]) return
@@ -459,6 +511,7 @@ export async function markVlogWatched(id) {
 
 // Fetch the first reply to a vlog (newest if there are several).
 export async function fetchVlogReply(vlogId) {
+  if (state.demo) return null
   const { data } = await sb.from('vlogs').select('*')
     .eq('room_id', state.room).eq('reply_to', vlogId)
     .order('created_at', { ascending: false }).limit(1).maybeSingle()

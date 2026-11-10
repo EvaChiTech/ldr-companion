@@ -26,6 +26,18 @@ const CARE_PACKAGES = [
 
 let channel = null
 let canvas = null, ctx = null
+
+// Every segment ever drawn this session, by either partner.
+//
+// The canvas needs a replayable history for three reasons: assigning
+// canvas.width on resize clears the bitmap, a partner who opens the tab late
+// would otherwise face a blank board forever, and broadcast carries no
+// backlog of its own. Segments are tiny, so keeping them is cheap.
+let strokes = []
+let sizeObserver = null
+const STROKE_CAP = 4000          // ~ the most a session plausibly draws
+const SYNC_CHUNK = 400           // segments per sync message (payload limits)
+let syncedOnce = false
 let drawing = false, lastPoint = null, lastEmit = 0
 let myLastTap = null              // {x, y, t}
 let theirLastTap = null
@@ -52,9 +64,17 @@ function joinChannel() {
     .on('broadcast', { event: 'draw'  }, ({ payload }) => handleDraw(payload))
     .on('broadcast', { event: 'erase' }, () =>            clearCanvas(false))
     .on('broadcast', { event: 'care'  }, ({ payload }) => playCare(payload))
+    // A partner who just opened the tab asks for what is already on the board.
+    .on('broadcast', { event: 'sync_req' }, ({ payload }) => sendSync(payload))
+    .on('broadcast', { event: 'sync_res' }, ({ payload }) => applySync(payload))
     .subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
         await channel.track({ partner_idx: state.me, t: Date.now() })
+        // Ask once; whoever is already there answers with the board so far.
+        if (!syncedOnce) {
+          syncedOnce = true
+          channel.send({ type: 'broadcast', event: 'sync_req', payload: { from: state.me } })
+        }
       }
     })
 }
@@ -70,17 +90,34 @@ function leaveChannel() {
 function setCanvasSize() {
   if (!canvas) return
   const r = rect()
+  // A hidden panel measures 0x0; sizing to that would blank the canvas and
+  // make every later stroke collapse to a point. Wait until it is visible.
+  if (r.width < 1 || r.height < 1) return
+
   const dpr = window.devicePixelRatio || 1
-  canvas.width  = Math.floor(r.width  * dpr)
-  canvas.height = Math.floor(r.height * dpr)
+  const w = Math.floor(r.width * dpr)
+  const h = Math.floor(r.height * dpr)
+  if (canvas.width === w && canvas.height === h) return   // nothing to do
+
+  // Assigning width/height clears the bitmap, so the log is replayed after.
+  canvas.width  = w
+  canvas.height = h
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
+  redraw()
 }
 
-function drawSegment(x0, y0, x1, y1, who) {
-  if (!ctx) return
+/** Repaint the whole board from the log. */
+function redraw() {
+  if (!ctx || !canvas) return
   const r = rect()
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  for (const s of strokes) paint(s.x0, s.y0, s.x1, s.y1, s.who, r)
+}
+
+/** Draw one segment without recording it. */
+function paint(x0, y0, x1, y1, who, r) {
   ctx.strokeStyle = who === state.me ? '#C4594A' : '#2A5F7A'
   ctx.lineWidth = 3
   ctx.beginPath()
@@ -89,8 +126,45 @@ function drawSegment(x0, y0, x1, y1, who) {
   ctx.stroke()
 }
 
+function record(x0, y0, x1, y1, who) {
+  strokes.push({ x0, y0, x1, y1, who })
+  if (strokes.length > STROKE_CAP) strokes.splice(0, strokes.length - STROKE_CAP)
+}
+
+/** Answer a late joiner with the board so far, in payload-sized chunks. */
+function sendSync(p) {
+  if (!channel || p?.from === state.me || !strokes.length) return
+  for (let i = 0; i < strokes.length; i += SYNC_CHUNK) {
+    channel.send({
+      type: 'broadcast',
+      event: 'sync_res',
+      payload: { from: state.me, seg: strokes.slice(i, i + SYNC_CHUNK) },
+    })
+  }
+}
+
+function applySync(p) {
+  if (p?.from === state.me || !Array.isArray(p?.seg)) return
+  // Their log already holds both partners' strokes, so only adopt it when we
+  // have nothing of our own — otherwise the two would double up.
+  if (strokes.length) return
+  for (const s of p.seg) {
+    if ([s.x0, s.y0, s.x1, s.y1].every(v => typeof v === 'number' && Number.isFinite(v))) {
+      record(s.x0, s.y0, s.x1, s.y1, s.who)
+    }
+  }
+  redraw()
+}
+
+function drawSegment(x0, y0, x1, y1, who) {
+  if (!ctx) return
+  record(x0, y0, x1, y1, who)
+  paint(x0, y0, x1, y1, who, rect())
+}
+
 function clearCanvas(broadcast = true) {
   if (!ctx || !canvas) return
+  strokes = []
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   if (broadcast) channel?.send({ type: 'broadcast', event: 'erase', payload: { from: state.me } })
 }
@@ -122,6 +196,9 @@ function onPointerUp() { drawing = false; lastPoint = null }
 
 function handleDraw(p) {
   if (p.from === state.me) return
+  const ok = [p.x0, p.y0, p.x1, p.y1]
+    .every(v => typeof v === 'number' && Number.isFinite(v))
+  if (!ok) return          // a malformed payload would poison the path
   drawSegment(p.x0, p.y0, p.x1, p.y1, p.from)
 }
 
@@ -254,6 +331,14 @@ export function initTogetherTab() {
   setCanvasSize()
   window.addEventListener('resize', setCanvasSize)
 
+  // The panel may still be hidden (0x0) when this runs, and the sub-nav can
+  // hide it again later. Observing the element re-sizes and repaints it the
+  // moment it has real dimensions, instead of leaving a dead canvas.
+  if ('ResizeObserver' in window) {
+    sizeObserver = new ResizeObserver(() => setCanvasSize())
+    sizeObserver.observe(canvas)
+  }
+
   // Pointer events (works for mouse + touch)
   canvas.addEventListener('pointerdown', onPointerDown)
   canvas.addEventListener('pointermove', onPointerMove)
@@ -268,6 +353,9 @@ export function initTogetherTab() {
 }
 
 export function teardownTogether() {
+  sizeObserver?.disconnect(); sizeObserver = null
+  strokes = []
+  syncedOnce = false
   leaveChannel()
   inited = false
 }

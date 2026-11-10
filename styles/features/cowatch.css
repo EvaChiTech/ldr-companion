@@ -1,0 +1,38 @@
+/* ============================================================
+   In-app co-watch (cowatch.js) — direct share + theater mirror
+   ============================================================ */
+.cw-theater {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text-2);
+  padding: 8px 10px; margin-bottom: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+.cw-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; background: var(--text-3); }
+.cw-dot.live { background: var(--green); box-shadow: 0 0 0 3px rgba(76,175,125,0.2); }
+.cw-dot.away { background: var(--gold); }
+
+.cw-status { font-size: 13px; margin-bottom: 10px; min-height: 18px; }
+.cw-idle  { color: var(--text-3); }
+.cw-busy  { color: var(--gold); }
+.cw-live  { color: var(--green); }
+.cw-error { color: var(--primary); }
+
+.cw-empty {
+  font-size: 13px; color: var(--text-3); text-align: center;
+  padding: 22px 16px;
+  background: var(--surface-2);
+  border: 1px dashed var(--border-2);
+  border-radius: var(--r-sm);
+}
+
+.cw-stage { position: relative; width: 100%; background: #000; border-radius: var(--r-sm); overflow: hidden; }
+.cw-video { width: 100%; aspect-ratio: 16 / 9; display: block; background: #000; }
+.cw-join  { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+
+.cw-note {
+  font-size: 11.5px; line-height: 1.5; color: var(--text-3);
+  margin: 12px 0 0; padding-top: 10px;
+  border-top: 1px solid var(--border);
+}

@@ -1,0 +1,32 @@
+/* ============================================================
+   GUESS THE DRAWING (drawgame.js)
+   ============================================================ */
+.dg-bar { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.dg-score { font-size: 12px; font-weight: 700; color: var(--text-2); }
+.dg-role  { font-size: 12.5px; color: var(--text-3); }
+.dg-word {
+  font-family: var(--serif); font-size: 19px; letter-spacing: 0.02em;
+  padding: 7px 12px; margin-bottom: 9px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--r-sm); display: inline-block;
+}
+.dg-word.hidden, .dg-stage.hidden, .dg-guess-row.hidden,
+#dg-clear.hidden, #dg-giveup.hidden { display: none; }
+
+.dg-stage {
+  width: 100%; aspect-ratio: 4 / 3;
+  background: #fff;
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  overflow: hidden; margin-bottom: 9px;
+}
+#dg-canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+
+.dg-guess-row { display: flex; gap: 6px; margin-bottom: 8px; }
+.dg-guess-row input {
+  flex: 1 1 auto; min-width: 0; font: inherit; font-size: 13px;
+  padding: 7px 11px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+}
+.dg-guesses { display: flex; flex-direction: column; gap: 3px; max-height: 110px; overflow-y: auto; }
+.dg-guess { font-size: 12.5px; color: var(--text-2); }
+.dg-guess.is-mine { color: var(--primary); font-weight: 600; }

@@ -55,6 +55,10 @@ export default {
   ob_pick_heading: 'Which one are you?',
   ob_pick_sub: 'Select your profile to continue',
 
+  // ── Demo mode ─────────────────────────────────────
+  demo_cta: 'See it with a partner — live demo',
+  demo_note: 'No account. Nothing saved.',
+
   // ── Tabs ───────────────────────────────────────────
   tab_home: 'Home', tab_chat: 'Chat', tab_plans: 'Plans', tab_story: 'Story',
   tab_watch: 'Watch', tab_together: 'Together', tab_rituals: 'Rituals', tab_life: 'Life',
@@ -169,6 +173,69 @@ export default {
   watch_picker_sub: 'Six watch ideas tuned to you two — tap to find on YouTube.',
   watch_picker_btn: 'Suggest tonight ✨',
   watch_picker_loading: 'Curating ideas just for you two…',
+
+  // ── Guess the drawing (drawgame.js) ────────────────
+  dg_label: 'Guess the drawing',
+  dg_sub: 'One of you draws a secret word, the other guesses. Roles swap each round.',
+  dg_new: 'Start a round',
+  dg_clear: 'Clear',
+  dg_giveup: 'Reveal word',
+  dg_guess_ph: 'Your guess…',
+  dg_guess_btn: 'Guess',
+
+  // ── Day in the life (dayinlife.js) ─────────────────
+  dl_label: 'Day in the life',
+  dl_sub: "Every hour, film six seconds of whatever you're doing. At the end of the day it plays back as one reel — just for the two of you.",
+  dl_hint: "It's a new hour — what are you up to?",
+  dl_rec: 'Film six seconds',
+  dl_ping: 'Nudge me hourly',
+  dl_play: 'Play the day',
+  dl_reel_close: 'Close',
+
+  // ── Puzzle (puzzle.js) ─────────────────────────────
+  pz_label: 'Puzzle',
+  pz_sub: 'Pick one of your photos and put it back together, live. Tap a tile, then tap another to swap them.',
+  pz_size: 'Pieces',
+
+  // ── Travel / location (travel.js) ──────────────────
+  tv_title: 'Where are you?',
+  tv_sub: 'Only your own side changes. Their clocks update straight away.',
+  tv_search_ph: 'Search a city or country…',
+  tv_close: 'Close',
+  tv_open_title: 'Change where you are',
+
+  home_more: 'Moods, reunions & noticings',
+
+  // ── Glance (glance.js) ─────────────────────────────
+  gl_label: 'From their side',
+  gl_empty: 'No photos from them yet. Anything they send in Chat shows up here.',
+
+  // ── In-app co-watch (cowatch.js) ───────────────────
+  cw_label: 'Stream to both of us',
+  cw_sub: 'Pick a video on your device and it plays for both of you, live. Only one of you needs the file.',
+  cw_file_btn: 'Choose a video…',
+  cw_screen_btn: 'Share a screen',
+  cw_stop_btn: 'Stop sharing',
+  cw_join_btn: 'Start watching',
+  cw_empty: 'Nothing playing yet. Choose a video and your partner sees it straight away.',
+  cw_note: 'Sends peer-to-peer between your two browsers. Subscription services like Netflix are protected and come through black — use the extension for those, where you each play your own copy.',
+
+  // ── Wander (wander.js) ─────────────────────────────
+  wd_label: 'Wander',
+  wd_sub: "Spin and you both land in the same place. Say whether you'd go — if you both say yes, it joins your bucket list.",
+  wd_spin: 'Take us somewhere ✈',
+  wd_empty: "Nowhere yet. Spin and you'll both land together.",
+  wd_yes: "I'd go 💞",
+  wd_no: 'Not for me',
+  wd_save: 'Add to bucket list',
+
+  // ── Tether card game (games.js) ────────────────────
+  tg_label: 'Tether — card game',
+  tg_sub: 'Match the suit or the number to shed your hand. Play a Tether and you can send a note across with it.',
+  tg_start: 'Deal a round',
+  tg_draw: 'Draw',
+  tg_quit: 'End round',
+  tg_note_ph: 'Say something as it lands…',
 
   // ── Together ───────────────────────────────────────
   together_info: 'Live presence — draw together, tap the same spot to kiss across miles, send a care package.',

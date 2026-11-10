@@ -1,0 +1,28 @@
+/* ============================================================
+   GLANCE — newest photo from their side (glance.js)
+   ============================================================ */
+.gl-card.hidden, .gl-stage.hidden, .gl-empty.hidden { display: none; }
+.gl-stage { margin-top: 10px; }
+.gl-img {
+  display: block; width: 100%;
+  max-height: 46vh; object-fit: cover;
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  cursor: zoom-in;
+}
+.gl-meta {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-top: 8px; font-size: 12.5px;
+}
+.gl-who  { font-weight: 700; color: var(--text); }
+.gl-when { color: var(--text-3); }
+.gl-caption {
+  margin: 5px 0 0; font-size: 13px; line-height: 1.5;
+  color: var(--text-2);
+}
+.gl-empty {
+  font-size: 13px; color: var(--text-3); text-align: center;
+  padding: 18px 14px; margin-top: 10px;
+  background: var(--surface-2);
+  border: 1px dashed var(--border-2); border-radius: var(--r-sm);
+}

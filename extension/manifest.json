@@ -1,0 +1,66 @@
+{
+  "manifest_version": 3,
+  "name": "LDR Companion — Theater",
+  "version": "1.0.0",
+  "description": "Watch streaming services in sync with your partner, using your own subscriptions. Pairs with your LDR Companion room.",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "LDR Theater",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://*.netflix.com/*",
+    "https://*.disneyplus.com/*",
+    "https://*.max.com/*",
+    "https://*.hbomax.com/*",
+    "https://*.hulu.com/*",
+    "https://*.primevideo.com/*",
+    "https://*.youtube.com/*",
+    "https://*.supabase.co/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.netflix.com/*",
+        "https://*.disneyplus.com/*",
+        "https://*.max.com/*",
+        "https://*.hbomax.com/*",
+        "https://*.hulu.com/*",
+        "https://*.primevideo.com/*",
+        "https://*.youtube.com/watch*"
+      ],
+      "js": ["content.js"],
+      "css": ["overlay.css"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["page-bridge.js"],
+      "matches": [
+        "https://*.netflix.com/*",
+        "https://*.disneyplus.com/*",
+        "https://*.max.com/*",
+        "https://*.hbomax.com/*",
+        "https://*.hulu.com/*",
+        "https://*.primevideo.com/*"
+      ]
+    }
+  ]
+}
